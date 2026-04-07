@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const results = await Promise.all(
       types.map(({ param }) =>
         fetch(
-          `https://www.bikereg.com/api/search?state=TX&format=json&eventtype=${param}`,
+          `https://www.bikereg.com/api/search?format=json&eventtype=${param}&withindays=365`,
           {
             headers: {
               'Accept': 'application/json',
@@ -26,20 +26,20 @@ export default async function handler(req, res) {
       )
     );
 
-    const NTX = [
-      'dallas','fort worth','frisco','plano','mckinney','allen','garland',
-      'irving','arlington','richardson','lewisville','denton','waxahachie',
-      'weatherford','rockwall','rowlett','wylie','sherman','denison',
-      'gainesville','decatur','mineral wells','granbury','corsicana',
-      'celina','prosper','grapevine','southlake','flower mound','coppell',
-      'cedar hill','mansfield','glen rose','cleburne','midlothian','ennis',
-      'kaufman','terrell','forney','gunter','melissa','anna','fate',
-      'royse city','heath','sunnyvale','sachse','duncanville','desoto',
-      'grand prairie','mesquite','carrollton','bedford','hurst','euless',
-      'keller','colleyville','argyle','justin','roanoke',
-    ];
+    // Filter by bounding box for North Texas
+    // Lat: 31.5–34.5, Lng: -98.5 to -96.0
+    const isNorthTexas = (lat, lng) => {
+      if (!lat || !lng) return false;
+      return lat >= 31.5 && lat <= 34.5 && lng >= -98.5 && lng <= -96.0;
+    };
 
-    const isNTX = (city = '') => !city || NTX.some(k => city.toLowerCase().includes(k));
+    const parseDate = (dateStr) => {
+      if (!dateStr) return null;
+      // BikeReg dates come as /Date(1775016000000-0400)/
+      const match = dateStr.match(/\/Date\((\d+)/);
+      if (match) return new Date(parseInt(match[1])).toISOString().split('T')[0];
+      return dateStr;
+    };
 
     const seen = new Set();
     const events = [];
@@ -47,27 +47,26 @@ export default async function handler(req, res) {
     results.forEach((result, i) => {
       const discipline = types[i].type;
       const raw = result.MatchingEvents || [];
-      console.log(`BikeReg ${types[i].param}: ${raw.length} statewide, filtering to NTX`);
+      const ntx = raw.filter(e => isNorthTexas(parseFloat(e.Latitude), parseFloat(e.Longitude)));
+      console.log(`BikeReg ${types[i].param}: ${raw.length} total, ${ntx.length} in North Texas`);
 
-      raw
-        .filter(e => isNTX(e.City))
-        .forEach(e => {
-          if (seen.has(e.EventId)) return;
-          seen.add(e.EventId);
+      ntx.forEach(e => {
+        if (seen.has(e.EventId)) return;
+        seen.add(e.EventId);
 
-          events.push({
-            id: 'br-' + e.EventId,
-            name: e.EventName || 'Untitled',
-            date: e.EventDateUTC || e.EventDate || '',
-            location: [e.City, e.State].filter(Boolean).join(', ') || 'Texas',
-            lat: parseFloat(e.Latitude) || null,
-            lng: parseFloat(e.Longitude) || null,
-            type: discipline,
-            distances: e.DistanceString ? [e.DistanceString] : [],
-            registrationUrl: e.RegistrationUrl || `https://www.bikereg.com/${e.EventId}`,
-            source: 'BikeReg'
-          });
+        events.push({
+          id: 'br-' + e.EventId,
+          name: e.EventName || 'Untitled',
+          date: parseDate(e.EventDateUTC || e.EventDate),
+          location: [e.City, e.State].filter(Boolean).join(', ') || 'North Texas',
+          lat: parseFloat(e.Latitude) || null,
+          lng: parseFloat(e.Longitude) || null,
+          type: discipline,
+          distances: e.DistanceString ? [e.DistanceString] : [],
+          registrationUrl: e.RegistrationUrl || `https://www.bikereg.com/${e.EventId}`,
+          source: 'BikeReg'
         });
+      });
     });
 
     return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
