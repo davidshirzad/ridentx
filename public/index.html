@@ -1,96 +1,744 @@
-Ride
-NTX
-		Events
-		Map
-		Resources
-NORTH TEXAS CYCLING HUB
-Every race. Every ride. One place.
-Road, gravel, cyclocross, and mountain bike events across North Texas — plus local routes, group rides, shops, and clubs.
-—
-EVENTS IN 2026
-4
-DISCIPLINES
-Upcoming Events
-2026 CALENDAR
-All
-Road
-Gravel
-Cyclocross
-MTB
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RideNTX — North Texas Cycling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --white: #ffffff;
+  --off-white: #f7f6f3;
+  --cream: #f0ede6;
+  --stone: #e8e4dc;
+  --border: #ddd9d0;
+  --border-dark: #c8c3b8;
+  --text-primary: #1a1916;
+  --text-secondary: #4a4740;
+  --text-muted: #8a8680;
+  --accent: #d4401a;
+  --accent-light: #f9ede8;
+  --road: #1a6fd4;
+  --road-bg: rgba(26,111,212,0.08);
+  --gravel: #c07838;
+  --gravel-bg: rgba(192,120,56,0.08);
+  --cx: #7c3abd;
+  --cx-bg: rgba(124,58,189,0.08);
+  --mtb: #1a9e5c;
+  --mtb-bg: rgba(26,158,92,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--white);color:var(--text-primary);font-weight:300;overflow-x:hidden}
 
+/* NAV */
+nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;padding:0 2rem}
+.nav-inner{max-width:1440px;margin:0 auto;width:100%;display:flex;align-items:center;justify-content:space-between}
+.wordmark{display:flex;align-items:baseline}
+.wm-r{font-family:'Unbounded',sans-serif;font-weight:900;font-size:1.2rem;color:var(--text-primary);letter-spacing:-0.03em}
+.wm-n{font-family:'Unbounded',sans-serif;font-weight:400;font-size:1.2rem;color:var(--accent);letter-spacing:-0.03em}
+.nav-links{display:flex;gap:0.2rem;list-style:none}
+.nav-links a{font-size:0.82rem;font-weight:500;color:var(--text-secondary);text-decoration:none;padding:0.4rem 0.9rem;border-radius:6px;transition:all 0.15s}
+.nav-links a:hover{background:var(--off-white);color:var(--text-primary)}
 
+/* HERO */
+.hero{background:var(--off-white);border-bottom:1px solid var(--border);padding:3.5rem 2rem 3rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 55% 100% at 95% 50%,rgba(212,64,26,0.05) 0%,transparent 65%),repeating-linear-gradient(0deg,transparent,transparent 48px,rgba(0,0,0,0.015) 48px,rgba(0,0,0,0.015) 49px),repeating-linear-gradient(90deg,transparent,transparent 48px,rgba(0,0,0,0.015) 48px,rgba(0,0,0,0.015) 49px);pointer-events:none}
+.hero-inner{max-width:1440px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:2rem;position:relative}
+.hero-eyebrow{font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:0.75rem}
+.hero-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:clamp(1.8rem,3.5vw,2.9rem);line-height:1.1;letter-spacing:-0.03em}
+.hero-title span{color:var(--accent)}
+.hero-sub{margin-top:0.75rem;font-size:0.92rem;color:var(--text-secondary);max-width:460px;line-height:1.65}
+.hero-stats{display:flex;gap:2rem;flex-shrink:0}
+.stat-block{text-align:right}
+.stat-num{font-family:'Unbounded',sans-serif;font-weight:700;font-size:2.4rem;color:var(--text-primary);line-height:1;letter-spacing:-0.04em}
+.stat-label{font-family:'DM Mono',monospace;font-size:0.63rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-muted);margin-top:0.2rem}
 
-Loading…
+/* SECTION */
+.section{padding:3rem 2rem}
+.section-inner{max-width:1440px;margin:0 auto}
+.section-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:0.9rem;border-bottom:2px solid var(--text-primary)}
+.section-title{font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:-0.02em}
+.section-meta{font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted)}
 
-BIKEREG + BIKESIGNUP
+/* EVENTS CONTROLS */
+.ev-controls{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.pill{font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;padding:0.35rem 0.9rem;border-radius:999px;border:1.5px solid var(--border-dark);background:var(--white);color:var(--text-secondary);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.pill:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.pill.active-all{background:var(--text-primary);border-color:var(--text-primary);color:var(--white)}
+.pill[data-t="road"].active{background:var(--road-bg);border-color:var(--road);color:var(--road)}
+.pill[data-t="gravel"].active{background:var(--gravel-bg);border-color:var(--gravel);color:var(--gravel)}
+.pill[data-t="cx"].active{background:var(--cx-bg);border-color:var(--cx);color:var(--cx)}
+.pill[data-t="mtb"].active{background:var(--mtb-bg);border-color:var(--mtb);color:var(--mtb)}
+.srch-wrap{position:relative;flex:1;max-width:250px}
+.srch-wrap svg{position:absolute;left:0.7rem;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.srch{width:100%;padding:0.4rem 0.85rem 0.4rem 2.1rem;border:1.5px solid var(--border);border-radius:999px;font-family:'DM Sans',sans-serif;font-size:0.8rem;background:var(--white);color:var(--text-primary);outline:none;transition:border-color 0.15s}
+.srch::placeholder{color:var(--text-muted)}
+.srch:focus{border-color:var(--text-primary)}
+.view-btns{display:flex;gap:0.3rem;margin-left:auto}
+.vbtn{background:var(--white);border:1.5px solid var(--border);border-radius:7px;padding:0.35rem 0.55rem;color:var(--text-muted);cursor:pointer;transition:all 0.15s;display:flex;align-items:center}
+.vbtn.active{border-color:var(--text-primary);color:var(--text-primary);background:var(--off-white)}
+.vbtn:hover:not(.active){border-color:var(--text-secondary);color:var(--text-secondary)}
 
-FETCHING EVENTS…
-Event Map
-NORTH TEXAS REGION
+/* STATUS */
+.status-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem}
+.status-txt{font-size:0.8rem;color:var(--text-muted)}
+.status-txt strong{color:var(--text-secondary);font-weight:500}
+.live-badge{display:flex;align-items:center;gap:0.4rem;font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--mtb);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
-Road
+/* MONTH GROUP */
+.month-grp{margin-bottom:2.25rem}
+.month-lbl{font-family:'Unbounded',sans-serif;font-weight:600;font-size:0.82rem;letter-spacing:0.02em;color:var(--text-muted);margin-bottom:0.75rem;display:flex;align-items:center;gap:0.6rem}
+.month-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.m-ct{font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;color:var(--text-muted)}
 
-Gravel
+/* GRID */
+.ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1rem}
+.ev-card{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:1.2rem;display:flex;flex-direction:column;gap:0.8rem;transition:border-color 0.15s,box-shadow 0.15s;animation:ci 0.3s ease both;position:relative;overflow:hidden}
+@keyframes ci{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.ev-card:hover{border-color:var(--border-dark);box-shadow:0 4px 20px rgba(0,0,0,0.07)}
+.stripe{position:absolute;top:0;left:0;right:0;height:3px}
+.s-road{background:var(--road)}.s-gravel{background:var(--gravel)}.s-cx{background:var(--cx)}.s-mtb{background:var(--mtb)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem;margin-top:0.3rem}
+.dt-blk{background:var(--off-white);border:1px solid var(--border);border-radius:8px;padding:0.45rem 0.65rem;text-align:center;flex-shrink:0;min-width:50px}
+.dt-mo{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);line-height:1}
+.dt-d{font-family:'Unbounded',sans-serif;font-weight:700;font-size:1.5rem;color:var(--text-primary);line-height:1;letter-spacing:-0.04em}
+.dt-dow{font-family:'DM Mono',monospace;font-size:0.56rem;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.1em}
+.type-bdg{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;padding:0.2rem 0.55rem;border-radius:999px;border:1px solid}
+.bdg-road{color:var(--road);border-color:var(--road);background:var(--road-bg)}
+.bdg-gravel{color:var(--gravel);border-color:var(--gravel);background:var(--gravel-bg)}
+.bdg-cx{color:var(--cx);border-color:var(--cx);background:var(--cx-bg)}
+.bdg-mtb{color:var(--mtb);border-color:var(--mtb);background:var(--mtb-bg)}
+.ev-name{font-weight:500;font-size:0.95rem;line-height:1.3;color:var(--text-primary)}
+.ev-loc{display:flex;align-items:center;gap:0.35rem;font-size:0.78rem;color:var(--text-secondary)}
+.ev-loc svg{color:var(--text-muted);flex-shrink:0}
+.dists{display:flex;gap:0.3rem;flex-wrap:wrap}
+.dist-chip{font-family:'DM Mono',monospace;font-size:0.65rem;padding:0.13rem 0.48rem;border-radius:4px;background:var(--off-white);border:1px solid var(--border);color:var(--text-secondary)}
+.card-foot{display:flex;align-items:center;justify-content:space-between;padding-top:0.7rem;border-top:1px solid var(--border);margin-top:auto}
+.src-tag{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted)}
+.reg-btn{font-size:0.78rem;font-weight:500;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:0.28rem;transition:opacity 0.15s}
+.reg-btn:hover{opacity:0.7}
 
-Cyclocross
+/* LIST */
+.ev-list{display:flex;flex-direction:column;gap:0.5rem}
+.list-row{display:grid;grid-template-columns:88px auto 1fr 110px auto;align-items:center;gap:1.25rem;padding:0.85rem 1.1rem;background:var(--white);border:1.5px solid var(--border);border-radius:8px;transition:border-color 0.12s,box-shadow 0.12s;animation:ci 0.25s ease both;position:relative;overflow:hidden}
+.list-row:hover{border-color:var(--border-dark);box-shadow:0 2px 12px rgba(0,0,0,0.05)}
+.l-date{font-family:'DM Mono',monospace;font-size:0.76rem;color:var(--text-secondary)}
+.l-name{font-weight:500;font-size:0.9rem}
+.l-loc{font-size:0.76rem;color:var(--text-muted)}
+.l-dists{display:flex;gap:0.28rem;flex-wrap:wrap}
 
-MTB
-Click any marker for event details
+/* EMPTY / LOADING */
+.empty-state{text-align:center;padding:5rem 2rem;color:var(--text-muted)}
+.empty-icon{font-size:2.5rem;margin-bottom:0.75rem;opacity:0.45}
+.empty-state h3{font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.35rem}
+.loading{text-align:center;padding:4rem}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.75s linear infinite;margin:0 auto 0.7rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted)}
 
-Local Resources
-NORTH TEXAS CYCLING COMMUNITY
-🗺 Popular Routes
-🚴 Group Rides
-🔧 Bike Shops
-🏅 Organizations
-ROAD / TRAIL
-White Rock Lake Loop
-9.4 mi · Easy · East Dallas
-Dallas's most beloved cycling loop. Hugs the shoreline with a stunning downtown skyline view on the east side. Best early morning before pedestrian traffic peaks. Combine with White Rock Creek Trail for a 24-mile out.
-AllTrails →
-ROAD / TRAIL
-Katy Trail
-3.5 mi · Easy · Uptown Dallas
-Built on the historic Missouri-Kansas-Texas Railroad corridor, connecting Knox-Henderson, Uptown, and Victory Park. Ideal warm-up or recovery ride. University Crossing extends it east toward White Rock Lake via the SMU campus edge.
-AllTrails →
-ROAD / TRAIL
-Trinity Trails — Fort Worth
-40+ mi · Easy–Moderate · Fort Worth
-Fort Worth's premier trail network along the Trinity River, connecting 21 parks including the Botanic Garden, Stockyards, and downtown. Outstanding for long steady-state efforts and a genuinely beautiful urban ride.
-AllTrails →
-ROAD / TRAIL
-Campion Trail — Irving
-13 mi · Easy · Irving / Las Colinas
-Follows the Elm Fork of the Trinity River through Irving — one of the longest continuous trail segments in the area. Connects to other major systems for a true long-day out-and-back option west of Dallas.
-AllTrails →
-ROAD / TRAIL
-Santa Fe Trail
-4.5 mi · Easy · East Dallas
-Connects White Rock Lake to Deep Ellum and Fair Park along a former railroad corridor. Best paired with the lake loop for a ride that ends at a great post-ride destination. Shaded and well-maintained.
-AllTrails →
-MTB
-DORBA Trails — Cedar Hill SP
-23 mi · Difficult · Cedar Hill
-The premier North Texas mountain bike experience. DORBA-maintained singletrack within Cedar Hill State Park. Technical terrain with meaningful elevation change. Requires day-use park fee. Worth every cent.
-DORBA Info →
-MTB
-Northshore Trail — Lake Grapevine
-23 mi · Moderate–Difficult · Flower Mound
-Seven interconnected loops at Lake Grapevine with dramatic lakeside cliff views. A favorite for intermediate to advanced riders. Park centrally at MADD Shelter for access to all loops. One of the best MTB experiences in DFW.
-AllTrails →
-GRAVEL
-Denton County Farm Roads
-40–100 mi · Moderate · Denton / Celina / Sherman
-The Denton–Celina–Gunter–Sherman corridor offers rolling gravel with low traffic and excellent road surfaces. Build your own routes on RideWithGPS or Komoot. Increasingly the heart of the North Texas gravel scene.
-Plan on RideWithGPS →
-GRAVEL
-Palo Pinto / Mineral Wells Roads
-40–120 mi · Moderate–Hard · West of DFW
-Rugged West Texas character just 90 minutes from Dallas. Rolling caliche and chip-seal roads through ranch country with real climbing. Increasingly popular as the North Texas gravel community expands its range.
-Plan on RideWithGPS →
-RideNTX
-North Texas Cycling Hub · Events sourced from BikeReg & BikeSignUp
-BikeReg ↗
-BikeSignUp ↗
-BikeDFW ↗
-DORBA ↗
+/* MAP */
+.map-section{background:var(--off-white);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.map-hdr{padding:2.5rem 2rem 1.25rem}
+.map-hdr-inner{max-width:1440px;margin:0 auto}
+#map{width:100%;height:480px;border-top:1px solid var(--border)}
+.map-legend{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;margin-top:0.75rem}
+.leg-item{display:flex;align-items:center;gap:0.4rem;font-size:0.76rem;color:var(--text-secondary)}
+.leg-dot{width:10px;height:10px;border-radius:50%}
+.map-hint{margin-left:auto;font-size:0.72rem;color:var(--text-muted)}
+
+/* RESOURCES */
+.res-section{background:var(--white)}
+.rtabs{display:flex;gap:0;margin-bottom:2rem;border-bottom:2px solid var(--border)}
+.rtab{font-family:'DM Sans',sans-serif;font-size:0.83rem;font-weight:500;padding:0.65rem 1.15rem;background:none;border:none;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap}
+.rtab:hover{color:var(--text-primary)}
+.rtab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.res-panel{display:none}
+.res-panel.active{display:grid}
+.res-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.res-card{border:1.5px solid var(--border);border-radius:12px;padding:1.2rem;background:var(--white);transition:border-color 0.15s,box-shadow 0.15s}
+.res-card:hover{border-color:var(--border-dark);box-shadow:0 3px 16px rgba(0,0,0,0.06)}
+.res-tag{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;padding:0.17rem 0.52rem;border-radius:4px;display:inline-block;margin-bottom:0.65rem}
+.tag-road{background:var(--road-bg);color:var(--road)}
+.tag-gravel{background:var(--gravel-bg);color:var(--gravel)}
+.tag-mtb{background:var(--mtb-bg);color:var(--mtb)}
+.tag-group{background:var(--accent-light);color:var(--accent)}
+.tag-mixed{background:var(--off-white);color:var(--text-secondary);border:1px solid var(--border)}
+.res-name{font-weight:500;font-size:0.93rem;margin-bottom:0.25rem;color:var(--text-primary)}
+.res-stats{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-muted);margin-bottom:0.45rem;letter-spacing:0.03em}
+.res-desc{font-size:0.78rem;color:var(--text-secondary);line-height:1.6}
+.res-link{display:inline-flex;align-items:center;gap:0.28rem;margin-top:0.7rem;font-size:0.76rem;font-weight:500;color:var(--accent);text-decoration:none;transition:opacity 0.15s}
+.res-link:hover{opacity:0.7}
+.chip-row{display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.6rem}
+.chip{font-size:0.66rem;padding:0.13rem 0.48rem;background:var(--off-white);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary)}
+.org-focus{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.45rem}
+
+/* FOOTER */
+footer{background:var(--text-primary);color:rgba(255,255,255,0.45);padding:1.75rem 2rem;font-size:0.76rem}
+.footer-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.footer-logo{font-family:'Unbounded',sans-serif;font-weight:900;font-size:1rem;color:var(--white)}
+.footer-logo span{color:var(--accent)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{color:rgba(255,255,255,0.4);text-decoration:none;transition:color 0.15s}
+.footer-links a:hover{color:var(--white)}
+
+/* LEAFLET */
+.leaflet-popup-content-wrapper{border-radius:10px!important;border:1.5px solid var(--border)!important;box-shadow:0 4px 24px rgba(0,0,0,0.1)!important;padding:0!important}
+.leaflet-popup-content{margin:0!important}
+.pop-inner{padding:0.8rem 0.95rem;font-family:'DM Sans',sans-serif}
+.pop-type{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:0.25rem}
+.pop-name{font-weight:500;font-size:0.88rem;color:var(--text-primary);margin-bottom:0.2rem}
+.pop-meta{font-size:0.73rem;color:var(--text-secondary);margin-bottom:0.45rem}
+.pop-link{font-size:0.73rem;font-weight:500;color:var(--accent);text-decoration:none}
+
+@media(max-width:768px){
+  .hero-inner{flex-direction:column;align-items:flex-start}
+  .ev-grid{grid-template-columns:1fr}
+  .list-row{grid-template-columns:1fr;gap:0.3rem}
+  .view-btns{display:none}
+  .nav-links{display:none}
+  .rtabs{overflow-x:auto}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="wordmark"><span class="wm-r">Ride</span><span class="wm-n">NTX</span></div>
+    <ul class="nav-links">
+      <li><a href="#events">Events</a></li>
+      <li><a href="#mapSection">Map</a></li>
+      <li><a href="#resources">Resources</a></li>
+    </ul>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">North Texas Cycling Hub</div>
+      <h1 class="hero-title">Every race.<br>Every ride.<br><span>One place.</span></h1>
+      <p class="hero-sub">Road, gravel, cyclocross, and mountain bike events across North Texas — plus local routes, group rides, shops, and clubs.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-block">
+        <div class="stat-num" id="totalCount">—</div>
+        <div class="stat-label">Events in 2026</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num">4</div>
+        <div class="stat-label">Disciplines</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS -->
+<section class="section" id="events">
+  <div class="section-inner">
+    <div class="section-hdr">
+      <h2 class="section-title">Upcoming Events</h2>
+      <span class="section-meta">2026 Calendar</span>
+    </div>
+    <div class="ev-controls">
+      <button class="pill active-all" data-t="all" onclick="setFilter('all',this)">All</button>
+      <button class="pill" data-t="road" onclick="setFilter('road',this)">Road</button>
+      <button class="pill" data-t="gravel" onclick="setFilter('gravel',this)">Gravel</button>
+      <button class="pill" data-t="cx" onclick="setFilter('cx',this)">Cyclocross</button>
+      <button class="pill" data-t="mtb" onclick="setFilter('mtb',this)">MTB</button>
+      <div class="srch-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="srch" type="text" placeholder="Search events or cities…" id="searchInput" oninput="render()">
+      </div>
+      <div class="view-btns">
+        <button class="vbtn active" id="gridBtn" onclick="setView('grid')" title="Grid">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+        <button class="vbtn" id="listBtn" onclick="setView('list')" title="List">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="status-bar">
+      <span class="status-txt" id="statusTxt">Loading…</span>
+      <div class="live-badge"><div class="live-dot"></div>BikeReg + BikeSignUp</div>
+    </div>
+    <div id="eventsContainer">
+      <div class="loading"><div class="spinner"></div><div class="loading-txt">Fetching events…</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- MAP -->
+<section class="map-section" id="mapSection">
+  <div class="map-hdr">
+    <div class="map-hdr-inner">
+      <div class="section-hdr">
+        <h2 class="section-title">Event Map</h2>
+        <span class="section-meta">North Texas Region</span>
+      </div>
+      <div class="map-legend">
+        <div class="leg-item"><span class="leg-dot" style="background:var(--road)"></span>Road</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--gravel)"></span>Gravel</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--cx)"></span>Cyclocross</div>
+        <div class="leg-item"><span class="leg-dot" style="background:var(--mtb)"></span>MTB</div>
+        <span class="map-hint">Click any marker for event details</span>
+      </div>
+    </div>
+  </div>
+  <div id="map"></div>
+</section>
+
+<!-- RESOURCES -->
+<section class="section res-section" id="resources">
+  <div class="section-inner">
+    <div class="section-hdr">
+      <h2 class="section-title">Local Resources</h2>
+      <span class="section-meta">North Texas Cycling Community</span>
+    </div>
+    <div class="rtabs">
+      <button class="rtab active" onclick="switchTab('routes',this)">🗺 Popular Routes</button>
+      <button class="rtab" onclick="switchTab('grouprides',this)">🚴 Group Rides</button>
+      <button class="rtab" onclick="switchTab('shops',this)">🔧 Bike Shops</button>
+      <button class="rtab" onclick="switchTab('orgs',this)">🏅 Organizations</button>
+    </div>
+
+    <!-- ROUTES -->
+    <div class="res-panel active res-grid" id="panel-routes">
+      <div class="res-card">
+        <span class="res-tag tag-road">Road / Trail</span>
+        <div class="res-name">White Rock Lake Loop</div>
+        <div class="res-stats">9.4 mi · Easy · East Dallas</div>
+        <div class="res-desc">Dallas's most beloved cycling loop. Hugs the shoreline with a stunning downtown skyline view on the east side. Best early morning before pedestrian traffic peaks. Combine with White Rock Creek Trail for a 24-mile out.</div>
+        <a href="https://www.alltrails.com/trail/us/texas/white-rock-lake-trail" target="_blank" class="res-link">AllTrails →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-road">Road / Trail</span>
+        <div class="res-name">Katy Trail</div>
+        <div class="res-stats">3.5 mi · Easy · Uptown Dallas</div>
+        <div class="res-desc">Built on the historic Missouri-Kansas-Texas Railroad corridor, connecting Knox-Henderson, Uptown, and Victory Park. Ideal warm-up or recovery ride. University Crossing extends it east toward White Rock Lake via the SMU campus edge.</div>
+        <a href="https://www.alltrails.com/trail/us/texas/katy-trail" target="_blank" class="res-link">AllTrails →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-road">Road / Trail</span>
+        <div class="res-name">Trinity Trails — Fort Worth</div>
+        <div class="res-stats">40+ mi · Easy–Moderate · Fort Worth</div>
+        <div class="res-desc">Fort Worth's premier trail network along the Trinity River, connecting 21 parks including the Botanic Garden, Stockyards, and downtown. Outstanding for long steady-state efforts and a genuinely beautiful urban ride.</div>
+        <a href="https://www.alltrails.com/explore/us/texas/fort-worth" target="_blank" class="res-link">AllTrails →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-road">Road / Trail</span>
+        <div class="res-name">Campion Trail — Irving</div>
+        <div class="res-stats">13 mi · Easy · Irving / Las Colinas</div>
+        <div class="res-desc">Follows the Elm Fork of the Trinity River through Irving — one of the longest continuous trail segments in the area. Connects to other major systems for a true long-day out-and-back option west of Dallas.</div>
+        <a href="https://www.alltrails.com/trail/us/texas/campion-trail" target="_blank" class="res-link">AllTrails →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-road">Road / Trail</span>
+        <div class="res-name">Santa Fe Trail</div>
+        <div class="res-stats">4.5 mi · Easy · East Dallas</div>
+        <div class="res-desc">Connects White Rock Lake to Deep Ellum and Fair Park along a former railroad corridor. Best paired with the lake loop for a ride that ends at a great post-ride destination. Shaded and well-maintained.</div>
+        <a href="https://www.alltrails.com/trail/us/texas/santa-fe-trail" target="_blank" class="res-link">AllTrails →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-mtb">MTB</span>
+        <div class="res-name">DORBA Trails — Cedar Hill SP</div>
+        <div class="res-stats">23 mi · Difficult · Cedar Hill</div>
+        <div class="res-desc">The premier North Texas mountain bike experience. DORBA-maintained singletrack within Cedar Hill State Park. Technical terrain with meaningful elevation change. Requires day-use park fee. Worth every cent.</div>
+        <a href="https://www.dorba.org" target="_blank" class="res-link">DORBA Info →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-mtb">MTB</span>
+        <div class="res-name">Northshore Trail — Lake Grapevine</div>
+        <div class="res-stats">23 mi · Moderate–Difficult · Flower Mound</div>
+        <div class="res-desc">Seven interconnected loops at Lake Grapevine with dramatic lakeside cliff views. A favorite for intermediate to advanced riders. Park centrally at MADD Shelter for access to all loops. One of the best MTB experiences in DFW.</div>
+        <a href="https://www.alltrails.com/trail/us/texas/northshore-trail" target="_blank" class="res-link">AllTrails →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-gravel">Gravel</span>
+        <div class="res-name">Denton County Farm Roads</div>
+        <div class="res-stats">40–100 mi · Moderate · Denton / Celina / Sherman</div>
+        <div class="res-desc">The Denton–Celina–Gunter–Sherman corridor offers rolling gravel with low traffic and excellent road surfaces. Build your own routes on RideWithGPS or Komoot. Increasingly the heart of the North Texas gravel scene.</div>
+        <a href="https://www.ridewithgps.com" target="_blank" class="res-link">Plan on RideWithGPS →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-gravel">Gravel</span>
+        <div class="res-name">Palo Pinto / Mineral Wells Roads</div>
+        <div class="res-stats">40–120 mi · Moderate–Hard · West of DFW</div>
+        <div class="res-desc">Rugged West Texas character just 90 minutes from Dallas. Rolling caliche and chip-seal roads through ranch country with real climbing. Increasingly popular as the North Texas gravel community expands its range.</div>
+        <a href="https://www.ridewithgps.com" target="_blank" class="res-link">Plan on RideWithGPS →</a>
+      </div>
+    </div>
+
+    <!-- GROUP RIDES -->
+    <div class="res-panel res-grid" id="panel-grouprides">
+      <div class="res-card">
+        <span class="res-tag tag-group">Group Ride</span>
+        <div class="res-name">Richardson Bike Mart Shop Rides</div>
+        <div class="res-stats">Weekly · 6 Locations · Paces 10–23 MPH</div>
+        <div class="res-desc">Bike Mart runs weekly rides from Richardson, Frisco, McKinney, White Rock Lake, Preston Hollow, and Fort Worth. Paces range from 10–12 MPH casual to 23 MPH race-intensity — something for every level. Free to join.</div>
+        <a href="https://www.bikemart.com/events/shop-rides-pg461.htm" target="_blank" class="res-link">View Schedule →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-group">Group Ride</span>
+        <div class="res-name">FWBA Weekend Rides</div>
+        <div class="res-stats">Sat & Sun · Fort Worth Area · All Levels</div>
+        <div class="res-desc">The Fort Worth Bicycle Association — 600+ members strong and established in 1970 — schedules rides every Saturday and Sunday across Tarrant, Johnson, Ellis, Parker, Hood, and Palo Pinto counties. Multiple paces per day.</div>
+        <a href="https://www.fwcycling.com/events/rides-events-maps-pg230.htm" target="_blank" class="res-link">View Ride Calendar →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-group">Group Ride</span>
+        <div class="res-name">Greater Dallas Bicyclists (GDB)</div>
+        <div class="res-stats">Multiple Days Weekly · Dallas Area · All Abilities</div>
+        <div class="res-desc">Club promoting cycling as a lifetime activity with structured rides throughout the week at varying distances and paces. Strong community culture with social events alongside the riding calendar. Beginner-friendly.</div>
+        <a href="https://gdbclub.clubexpress.com" target="_blank" class="res-link">Visit GDB →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-group">Group Ride</span>
+        <div class="res-name">Matrix Cycle Club Training Rides</div>
+        <div class="res-stats">Multiple Days · Richardson–Dallas · Performance</div>
+        <div class="res-desc">Performance-focused club based in Richardson for cyclists serious about racing and high-intensity training. Members compete regularly across DFW. Fast-paced structured workouts for riders who want to get faster.</div>
+        <a href="https://www.matrixcycleclub.org" target="_blank" class="res-link">Visit Matrix CC →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-group">Group Ride</span>
+        <div class="res-name">DORBA Trail Rides</div>
+        <div class="res-stats">Weekly · Multiple Trail Systems · MTB</div>
+        <div class="res-desc">DORBA organizes regular group mountain bike rides at managed trail systems including Cedar Hill, Erwin Park, and Rowlett Creek. Rides are sorted by skill level. The best way to explore North Texas singletrack with experienced guides.</div>
+        <a href="https://www.dorba.org/events" target="_blank" class="res-link">View DORBA Events →</a>
+      </div>
+      <div class="res-card">
+        <span class="res-tag tag-group">Group Ride</span>
+        <div class="res-name">Denton County Cycling Rides</div>
+        <div class="res-stats">Weekly · Denton Area · Mixed Levels</div>
+        <div class="res-desc">Active group serving the Denton area with regular road and gravel rides in Denton County. A great entry point for riders in the northern suburbs seeking structured group mileage without driving into Dallas proper.</div>
+        <a href="https://www.bikedfw.org/groups--clubs.html" target="_blank" class="res-link">Find via BikeDFW →</a>
+      </div>
+    </div>
+
+    <!-- SHOPS -->
+    <div class="res-panel res-grid" id="panel-shops">
+      <div class="res-card">
+        <div class="res-name">Richardson Bike Mart</div>
+        <div class="res-stats" style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-bottom:0.45rem">RICHARDSON · DALLAS · FRISCO · MCKINNEY · FORT WORTH</div>
+        <div class="res-desc">The cornerstone of DFW cycling retail with six locations. Enormous selection spanning road, gravel, and mountain — where Lance Armstrong got his start. Known for racing expertise, rigorous bike assembly, and weekly group rides from every location.</div>
+        <div class="chip-row"><span class="chip">Road</span><span class="chip">Gravel</span><span class="chip">MTB</span><span class="chip">Group Rides</span><span class="chip">Fittings</span></div>
+        <a href="https://www.bikemart.com" target="_blank" class="res-link">bikemart.com →</a>
+      </div>
+      <div class="res-card">
+        <div class="res-name">Fort Worth Cycling & Fitness</div>
+        <div class="res-stats" style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-bottom:0.45rem">SOUTHWEST FORT WORTH</div>
+        <div class="res-desc">Carries Trek, Giant, Santa Cruz, Pinarello, and Cannondale. Expert mechanics, professional bike fittings, and a strong weekend group ride program. Free lifetime adjustments on new bike purchases. A true community shop.</div>
+        <div class="chip-row"><span class="chip">Road</span><span class="chip">MTB</span><span class="chip">Fittings</span><span class="chip">Service</span></div>
+        <a href="https://www.fwcycling.com" target="_blank" class="res-link">fwcycling.com →</a>
+      </div>
+      <div class="res-card">
+        <div class="res-name">Dallas Bike Works</div>
+        <div class="res-stats" style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-bottom:0.45rem">DALLAS</div>
+        <div class="res-desc">Full-service shop with professional bike fitting on every new purchase. Home to road, mountain, and cyclocross club teams — the right shop for riders who want community alongside quality equipment and expert service.</div>
+        <div class="chip-row"><span class="chip">Road</span><span class="chip">CX</span><span class="chip">MTB</span><span class="chip">Club Teams</span></div>
+        <a href="https://www.dallasbikeworks.com" target="_blank" class="res-link">dallasbikeworks.com →</a>
+      </div>
+      <div class="res-card">
+        <div class="res-name">Oak Cliff Bicycle Company</div>
+        <div class="res-stats" style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-bottom:0.45rem">BISHOP ARTS DISTRICT · DALLAS</div>
+        <div class="res-desc">Beloved neighborhood shop in one of Dallas's best cycling neighborhoods. Voted "Best Bike Shop in Dallas" by local residents. Deep community involvement and a welcoming atmosphere for cyclists at every level.</div>
+        <div class="chip-row"><span class="chip">Road</span><span class="chip">Urban</span><span class="chip">Community</span></div>
+      </div>
+      <div class="res-card">
+        <div class="res-name">Trek Bicycle DFW</div>
+        <div class="res-stats" style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-bottom:0.45rem">7 LOCATIONS ACROSS DFW</div>
+        <div class="res-desc">Trek's official retail presence across the metroplex: Allen, Arlington, Coppell, Dallas Park Cities, Flower Mound, Fort Worth South, and Southlake. 24-hour service turnaround with a free loaner bike guarantee. Consistent road, gravel, and MTB inventory.</div>
+        <div class="chip-row"><span class="chip">Road</span><span class="chip">Gravel</span><span class="chip">MTB</span><span class="chip">24hr Service</span></div>
+        <a href="https://www.trekbikes.com/us/en_US/stores/dallasfortworth/" target="_blank" class="res-link">Find a Store →</a>
+      </div>
+      <div class="res-card">
+        <div class="res-name">Bonzai Cycle Werx</div>
+        <div class="res-stats" style="font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--text-muted);margin-bottom:0.45rem">NORTH FORT WORTH · HERITAGE TRACE</div>
+        <div class="res-desc">One of Tarrant County's most respected shops for years. Wide selection for all ages and disciplines with an emphasis on superior service over mass-market volume. Road, MTB, and kids' bikes with a loyal local customer base.</div>
+        <div class="chip-row"><span class="chip">Road</span><span class="chip">MTB</span><span class="chip">Family</span></div>
+      </div>
+    </div>
+
+    <!-- ORGS -->
+    <div class="res-panel res-grid" id="panel-orgs">
+      <div class="res-card">
+        <div class="org-focus">Advocacy · Infrastructure · Community</div>
+        <div class="res-name">BikeDFW</div>
+        <div class="res-desc">501(c)(3) nonprofit working toward healthy, sustainable communities across the DFW region. Maintains the most comprehensive directory of DFW clubs and a community calendar for social rides. The connective tissue of the North Texas cycling ecosystem.</div>
+        <a href="https://www.bikedfw.org" target="_blank" class="res-link">bikedfw.org →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">MTB · Trail Building · Land Access</div>
+        <div class="res-name">DORBA</div>
+        <div class="res-desc">Dallas Off-Road Bicycle Association — the primary force behind mountain bike trail access in North Texas. Builds and maintains trails at Cedar Hill SP, Erwin Park, Rowlett Creek, and more. Membership directly funds trail construction and advocacy.</div>
+        <a href="https://www.dorba.org" target="_blank" class="res-link">dorba.org →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">Road · Recreation · Community</div>
+        <div class="res-name">Fort Worth Bicycle Association</div>
+        <div class="res-desc">Established in 1970 — the largest cycling group in the Fort Worth area with 600+ members. Saturday and Sunday group rides across 6 counties. Social events, family rides, competitive training, and member gear discounts. A true institution.</div>
+        <a href="https://www.fwcycling.com" target="_blank" class="res-link">fwcycling.com →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">Road Racing · Performance Training</div>
+        <div class="res-name">Matrix Cycle Club</div>
+        <div class="res-desc">Richardson-based nonprofit dedicated to performance cycling in DFW. Members compete regularly across the area and come from all walks of life united by a passion for going fast. The top option for aspiring racers in North Texas.</div>
+        <a href="https://www.matrixcycleclub.org" target="_blank" class="res-link">matrixcycleclub.org →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">Road · Recreation · All Abilities</div>
+        <div class="res-name">Greater Dallas Bicyclists</div>
+        <div class="res-desc">Club promoting cycling as a lifetime activity with a focus on health, wellness, and friendship. Welcomes riders from true beginners to accomplished cyclists. Regular weekly rides at varying distances and paces throughout Dallas.</div>
+        <a href="https://gdbclub.clubexpress.com" target="_blank" class="res-link">GDB Club →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">MTB · Trail Access · Volunteering</div>
+        <div class="res-name">Fort Worth MTB Association</div>
+        <div class="res-desc">All-volunteer 501(c)(3) promoting responsible mountain biking and sustainable trail development in the Fort Worth area. Partners with local municipalities to build and maintain trails in Tarrant County and beyond. Volunteer-powered.</div>
+        <a href="https://www.fwcycling.com" target="_blank" class="res-link">Learn More →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">Statewide Advocacy · Safety · Education</div>
+        <div class="res-name">BikeTexas</div>
+        <div class="res-desc">Texas-wide nonprofit advancing bicycle access, safety, and education. Advocates for better infrastructure, publishes safety resources, and supports bike-friendly legislation. Membership supports improvements that benefit every North Texas rider.</div>
+        <a href="https://www.biketexas.org" target="_blank" class="res-link">biketexas.org →</a>
+      </div>
+      <div class="res-card">
+        <div class="org-focus">Road · Advocacy · North Dallas</div>
+        <div class="res-name">Plano Bicycle Association</div>
+        <div class="res-desc">Active cycling club and advocacy group serving Plano and North Dallas. Organizes regular group rides and works with the City of Plano on bicycle infrastructure improvements and cycling promotion initiatives throughout Collin County.</div>
+        <a href="https://www.bikedfw.org/groups--clubs.html" target="_blank" class="res-link">Find via BikeDFW →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">Ride<span>NTX</span></div>
+    <span>North Texas Cycling Hub · Events sourced from BikeReg & BikeSignUp</span>
+    <div class="footer-links">
+      <a href="https://www.bikereg.com" target="_blank">BikeReg ↗</a>
+      <a href="https://www.bikesignup.com" target="_blank">BikeSignUp ↗</a>
+      <a href="https://www.bikedfw.org" target="_blank">BikeDFW ↗</a>
+      <a href="https://www.dorba.org" target="_blank">DORBA ↗</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MOS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MOSF=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const TYPE_COLORS={road:'#1a6fd4',gravel:'#c07838',cx:'#7c3abd',mtb:'#1a9e5c'};
+const TYPE_LABELS={road:'Road',gravel:'Gravel',cx:'CX',mtb:'MTB'};
+
+let allEvents=[],filter='all',view='grid',mapObj=null,markers=[];
+
+// DEMO DATA
+function demo(){
+  return [
+    {id:'d1',name:'Lone Star CX — Dallas Round 1',date:'2026-01-10',loc:'Dallas, TX',lat:32.79,lng:-96.80,type:'cx',dists:['Elite','Cat 3/4','Beginner'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d2',name:'Denton Gran Fondo',date:'2026-01-24',loc:'Denton, TX',lat:33.21,lng:-97.13,type:'road',dists:['40mi','70mi','100mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d3',name:'Texas State Gravel Championship',date:'2026-02-07',loc:'Decatur, TX',lat:33.23,lng:-97.58,type:'gravel',dists:['35mi','75mi','115mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d4',name:'Collin Classic Road Race',date:'2026-02-21',loc:'McKinney, TX',lat:33.20,lng:-96.64,type:'road',dists:['25mi','45mi','65mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d5',name:'Toad Hollow Trail Race',date:'2026-03-07',loc:'Frisco, TX',lat:33.15,lng:-96.82,type:'mtb',dists:['15mi','30mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d6',name:'North Texas Gravel Grinder',date:'2026-03-21',loc:'Sherman, TX',lat:33.64,lng:-96.61,type:'gravel',dists:['40mi','80mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d7',name:'DFW Cycling Challenge',date:'2026-04-04',loc:'Grapevine, TX',lat:32.93,lng:-97.08,type:'road',dists:['25mi','50mi','100mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d8',name:'Redbud Classic Criterium',date:'2026-04-11',loc:'Dallas, TX',lat:32.78,lng:-96.80,type:'road',dists:['Cat 1/2','Cat 3/4','Cat 5'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d9',name:'Chisholm Trail Gravel Race',date:'2026-04-25',loc:'Weatherford, TX',lat:32.76,lng:-97.80,type:'gravel',dists:['25mi','55mi','100mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d10',name:'Lake Ray Roberts MTB Race',date:'2026-05-09',loc:'Denton, TX',lat:33.37,lng:-97.08,type:'mtb',dists:['10mi','20mi','35mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d11',name:'Prosper Gran Fondo',date:'2026-05-16',loc:'Prosper, TX',lat:33.24,lng:-96.80,type:'road',dists:['30mi','60mi','100mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d12',name:'Frontier Gravel Fest',date:'2026-05-30',loc:'Gainesville, TX',lat:33.63,lng:-97.13,type:'gravel',dists:['30mi','60mi','100mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d13',name:'Tour de Fort Worth',date:'2026-06-06',loc:'Fort Worth, TX',lat:32.72,lng:-97.32,type:'road',dists:['20mi','40mi','70mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d14',name:'Piney Woods Gravel Stomp',date:'2026-07-11',loc:'Corsicana, TX',lat:32.09,lng:-96.47,type:'gravel',dists:['35mi','75mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d15',name:'Lone Star MTB Series — Plano',date:'2026-07-18',loc:'Plano, TX',lat:33.02,lng:-96.70,type:'mtb',dists:['Sport','Expert','Pro'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d16',name:'Allen Road Race Classic',date:'2026-08-01',loc:'Allen, TX',lat:33.10,lng:-96.67,type:'road',dists:['30mi','55mi','80mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d17',name:'Palo Pinto Gravel Ramble',date:'2026-08-22',loc:'Mineral Wells, TX',lat:32.81,lng:-98.11,type:'gravel',dists:['40mi','80mi','120mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d18',name:'Texoma Classic Road Race',date:'2026-09-05',loc:'Denison, TX',lat:33.75,lng:-96.54,type:'road',dists:['35mi','65mi','100mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d19',name:'Cross of the Plains — Round 1',date:'2026-09-19',loc:'Dallas, TX',lat:32.80,lng:-96.81,type:'cx',dists:['Elite','Cat 3','Masters'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d20',name:'Waxahachie Gravel Classic',date:'2026-09-26',loc:'Waxahachie, TX',lat:32.39,lng:-96.85,type:'gravel',dists:['25mi','50mi','100mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d21',name:'DFW CX — Frisco',date:'2026-10-03',loc:'Frisco, TX',lat:33.15,lng:-96.82,type:'cx',dists:['Elite','Cat 3/4','Juniors'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d22',name:'Lake Tawakoni MTB Race',date:'2026-10-10',loc:'Rockwall, TX',lat:32.93,lng:-96.46,type:'mtb',dists:['15mi','30mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d23',name:'Granbury Gran Fondo',date:'2026-10-17',loc:'Granbury, TX',lat:32.44,lng:-97.79,type:'road',dists:['40mi','70mi','100mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d24',name:'North Texas CX Championships',date:'2026-10-31',loc:'Denton, TX',lat:33.21,lng:-97.13,type:'cx',dists:['All Categories'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d25',name:'Celina Gravel Grinder',date:'2026-11-07',loc:'Celina, TX',lat:33.32,lng:-96.78,type:'gravel',dists:['30mi','60mi'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d26',name:'Texas State CX Championships',date:'2026-11-14',loc:'Fort Worth, TX',lat:32.72,lng:-97.32,type:'cx',dists:['Elite','Masters','Cat 3'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d27',name:'Dinosaur Valley MTB Challenge',date:'2026-11-21',loc:'Glen Rose, TX',lat:32.23,lng:-97.75,type:'mtb',dists:['Sport','Expert'],url:'https://www.bikesignup.com',src:'BikeSignUp'},
+    {id:'d28',name:'Jingle Cross DFW',date:'2026-12-05',loc:'Plano, TX',lat:33.02,lng:-96.70,type:'cx',dists:['Elite','Cat 3/4','Kids'],url:'https://www.bikereg.com',src:'BikeReg'},
+    {id:'d29',name:'Year-End Road Classic',date:'2026-12-12',loc:'Irving, TX',lat:32.81,lng:-96.95,type:'road',dists:['25mi','50mi'],url:'https://www.bikereg.com',src:'BikeReg'},
+  ];
+}
+
+// API
+async function fetchLive(){
+  try{
+    const [br,bs]=await Promise.allSettled([
+      fetch('https://www.bikereg.com/api/search?state=TX&withindays=365&format=json').then(r=>r.ok?r.json():null),
+      fetch('https://www.bikesignup.com/rest/races?format=json&state=TX',{headers:{'Accept':'application/json'}}).then(r=>r.ok?r.json():null)
+    ]);
+    const ntxKw=['dallas','fort worth','frisco','plano','mckinney','allen','garland','irving','arlington','grand prairie','mesquite','carrollton','richardson','lewisville','denton','waxahachie','weatherford','cleburne','rockwall','rowlett','wylie','sherman','denison','gainesville','decatur','mineral wells','granbury','corsicana','prosper','grapevine','southlake','flower mound','coppell','cedar hill','mansfield','celina','glen rose','ntx','metroplex','north texas'];
+    const isNTX=loc=>!loc||ntxKw.some(k=>loc.toLowerCase().includes(k));
+    const inferType=(s='')=>{const t=s.toLowerCase();if(t.includes('cyclocross')||t.includes(' cx'))return'cx';if(t.includes('gravel'))return'gravel';if(t.includes('mountain')||t.includes(' mtb')||t.includes('trail'))return'mtb';return'road';};
+    let evts=[];
+    if(br.status==='fulfilled'&&br.value?.data){
+      evts.push(...br.value.data.map(e=>{
+        const loc=[e.city,e.state].filter(Boolean).join(', ');
+        const dists=[];if(e.categories){const s=new Set();e.categories.forEach(c=>{if(c.distance_in_meters){const m=Math.round(c.distance_in_meters/1609);if(m>0&&!s.has(m+'mi')){s.add(m+'mi');dists.push(m+'mi');}}});}
+        return{id:'br-'+e.event_id,name:e.event_name||'Untitled',date:e.event_date_utc||e.event_date||'',loc,lat:parseFloat(e.lat||0)||null,lng:parseFloat(e.lng||0)||null,type:inferType(e.event_name+' '+(e.event_type||'')),dists:dists.slice(0,5),url:`https://www.bikereg.com/${e.event_id}`,src:'BikeReg'};
+      }).filter(e=>isNTX(e.loc)));
+    }
+    if(bs.status==='fulfilled'&&bs.value?.races){
+      evts.push(...bs.value.races.map(r=>{
+        const race=r.race;if(!race)return null;
+        const addr=race.address||{};const loc=[addr.city,addr.state].filter(Boolean).join(', ');
+        const dists=[];if(race.events){const s=new Set();race.events.forEach(ev=>{if(ev.distance){const l=ev.distance+(ev.distance_unit==='M'?'mi':ev.distance_unit==='K'?'km':'');if(!s.has(l)){s.add(l);dists.push(l);}}});}
+        return{id:'bs-'+race.race_id,name:race.name||'Untitled',date:race.next_date||'',loc,lat:parseFloat(addr.lat||0)||null,lng:parseFloat(addr.lng||0)||null,type:inferType(race.name),dists:dists.slice(0,5),url:race.url||`https://www.bikesignup.com/Race/${race.race_id}`,src:'BikeSignUp'};
+      }).filter(Boolean).filter(e=>isNTX(e.loc)));
+    }
+    const now=new Date(),end=new Date();end.setFullYear(end.getFullYear()+1);
+    const seen=new Set();
+    evts=evts.filter(e=>{const d=pd(e.date);if(!d||d<now||d>end)return false;const k=e.name.toLowerCase().trim()+e.date.substring(0,10);if(seen.has(k))return false;seen.add(k);return true;});
+    evts.sort((a,b)=>{const da=pd(a.date),db=pd(b.date);return da&&db?da-db:0;});
+    return evts.length?evts:null;
+  }catch{return null;}
+}
+
+// DATE UTILS
+function pd(s){if(!s)return null;const d=new Date(s);return isNaN(d)?null:d;}
+function db(s){const d=pd(s);if(!d)return{mo:'—',day:'—',dow:'—'};return{mo:MOS[d.getUTCMonth()],day:d.getUTCDate(),dow:DAYS[d.getUTCDay()]};}
+function ds(s){const d=pd(s);if(!d)return'—';return`${DAYS[d.getUTCDay()]} ${MOS[d.getUTCMonth()]} ${d.getUTCDate()}`;}
+
+// FILTERED
+function filtered(){
+  const q=(document.getElementById('searchInput')?.value||'').toLowerCase().trim();
+  return allEvents.filter(e=>(filter==='all'||e.type===filter)&&(!q||e.name.toLowerCase().includes(q)||(e.loc||'').toLowerCase().includes(q)));
+}
+
+// RENDER
+function render(){
+  const evts=filtered();
+  const c=document.getElementById('eventsContainer');
+  const st=document.getElementById('statusTxt');
+  st.innerHTML=`Showing <strong>${evts.length}</strong> of <strong>${allEvents.length}</strong> events`;
+  if(!evts.length){c.innerHTML=`<div class="empty-state"><div class="empty-icon">🚴</div><h3>No events found</h3><p>Try adjusting filters or search.</p></div>`;updateMap([]);return;}
+  const groups=byMonth(evts);let html='';
+  groups.forEach(g=>{
+    html+=`<div class="month-grp"><div class="month-lbl">${g.lbl} <span class="m-ct">${g.evts.length} event${g.evts.length!==1?'s':''}</span></div>`;
+    if(view==='grid'){html+=`<div class="ev-grid">`;g.evts.forEach((e,i)=>html+=cardH(e,i));html+=`</div>`;}
+    else{html+=`<div class="ev-list">`;g.evts.forEach((e,i)=>html+=listH(e,i));html+=`</div>`;}
+    html+=`</div>`;
+  });
+  c.innerHTML=html;updateMap(evts);
+}
+
+function byMonth(evts){
+  const g={};
+  evts.forEach(e=>{const d=pd(e.date);const k=d?`${d.getUTCFullYear()}-${String(d.getUTCMonth()).padStart(2,'0')}`:'unk';const lbl=d?`${MOSF[d.getUTCMonth()]} ${d.getUTCFullYear()}`:'Unknown';if(!g[k])g[k]={lbl,evts:[]};g[k].evts.push(e);});
+  return Object.entries(g).sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v);
+}
+
+function locIcon(){return`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`;}
+function arrowIcon(){return`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>`;}
+
+function cardH(e,i){
+  const d=db(e.date);
+  return`<div class="ev-card" style="animation-delay:${i*0.025}s">
+    <div class="stripe s-${e.type}"></div>
+    <div class="card-top">
+      <div class="dt-blk"><div class="dt-mo">${d.mo}</div><div class="dt-d">${d.day}</div><div class="dt-dow">${d.dow}</div></div>
+      <span class="type-bdg bdg-${e.type}">${TYPE_LABELS[e.type]}</span>
+    </div>
+    <div class="ev-name">${e.name}</div>
+    <div class="ev-loc">${locIcon()} ${e.loc||'North Texas'}</div>
+    ${e.dists.length?`<div class="dists">${e.dists.map(d=>`<span class="dist-chip">${d}</span>`).join('')}</div>`:''}
+    <div class="card-foot">
+      <span class="src-tag">${e.src}</span>
+      <a href="${e.url}" target="_blank" class="reg-btn">Register ${arrowIcon()}</a>
+    </div>
+  </div>`;
+}
+
+function listH(e,i){
+  return`<div class="list-row" style="animation-delay:${i*0.018}s">
+    <div class="l-date">${ds(e.date)}</div>
+    <span class="type-bdg bdg-${e.type}">${TYPE_LABELS[e.type]}</span>
+    <div><div class="l-name">${e.name}</div><div class="l-loc">${e.loc||'North Texas'}</div></div>
+    <div class="l-dists">${e.dists.slice(0,3).map(d=>`<span class="dist-chip">${d}</span>`).join('')}</div>
+    <a href="${e.url}" target="_blank" class="reg-btn">Register ${arrowIcon()}</a>
+  </div>`;
+}
+
+// CONTROLS
+function setFilter(t,btn){
+  filter=t;
+  document.querySelectorAll('.pill').forEach(b=>b.classList.remove('active-all','active'));
+  btn.classList.add(t==='all'?'active-all':'active');
+  render();
+}
+
+function setView(v){
+  view=v;
+  document.getElementById('gridBtn').classList.toggle('active',v==='grid');
+  document.getElementById('listBtn').classList.toggle('active',v==='list');
+  render();
+}
+
+// MAP
+function initMap(){
+  mapObj=L.map('map',{center:[32.95,-97.05],zoom:8});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains:'abcd',maxZoom:19
+  }).addTo(mapObj);
+}
+
+function markerIcon(type){
+  const c=TYPE_COLORS[type]||'#888';
+  return L.divIcon({
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34"><path d="M13 0C5.82 0 0 5.82 0 13c0 8.66 13 21 13 21S26 21.66 26 13C26 5.82 20.18 0 13 0z" fill="${c}" stroke="white" stroke-width="1.5"/><circle cx="13" cy="13" r="5.5" fill="white" opacity="0.92"/></svg>`,
+    iconSize:[26,34],iconAnchor:[13,34],popupAnchor:[0,-34],className:''
+  });
+}
+
+function updateMap(evts){
+  if(!mapObj)return;
+  markers.forEach(m=>mapObj.removeLayer(m));markers=[];
+  evts.filter(e=>e.lat&&e.lng&&Math.abs(e.lat)>1).forEach(e=>{
+    const lat=e.lat+(Math.random()-0.5)*0.018,lng=e.lng+(Math.random()-0.5)*0.018;
+    const d=db(e.date);
+    const pop=`<div class="pop-inner"><div class="pop-type">${TYPE_LABELS[e.type]||e.type}</div><div class="pop-name">${e.name}</div><div class="pop-meta">${d.dow}, ${d.mo} ${d.day} · ${e.loc||'North Texas'}</div>${e.dists.length?`<div class="pop-meta" style="color:#8a8680">${e.dists.join(' · ')}</div>`:''}<a href="${e.url}" target="_blank" class="pop-link">Register ↗</a></div>`;
+    const m=L.marker([lat,lng],{icon:markerIcon(e.type)}).bindPopup(pop,{maxWidth:220}).addTo(mapObj);
+    markers.push(m);
+  });
+}
+
+// TABS
+function switchTab(id,btn){
+  document.querySelectorAll('.rtab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.res-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+}
+
+// INIT
+async function init(){
+  initMap();
+  const live=await fetchLive();
+  allEvents=live||demo();
+  document.getElementById('totalCount').textContent=allEvents.length;
+  if(!live)document.getElementById('statusTxt').innerHTML=`<span style="color:var(--text-muted);font-size:0.75rem">Showing sample data — add a backend proxy for live feeds</span>`;
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
