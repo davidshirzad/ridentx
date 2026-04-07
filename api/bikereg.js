@@ -3,10 +3,19 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
 
   try {
+    const today = new Date().toISOString();
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const endDate = nextYear.toISOString();
+
     const query = `{
-      upcomingAthleticEvents(
-        appType: BIKEREG
-        findArea: { latitude: 32.8968, longitude: -97.0403, distance: 150 }
+      athleticEventCalendar(
+        searchParameters: {
+          appType: BIKEREG
+          startDate: "${today}"
+          endDate: "${endDate}"
+          location: { latitude: 32.8968, longitude: -97.0403, distance: 150 }
+        }
         first: 200
       ) {
         nodes {
@@ -50,10 +59,9 @@ export default async function handler(req, res) {
       });
     }
 
-    const nodes = json?.data?.upcomingAthleticEvents?.nodes || [];
-    console.log(`BikeReg GraphQL: ${nodes.length} events within 150mi of DFW`);
+    const nodes = json?.data?.athleticEventCalendar?.nodes || [];
+    console.log(`BikeReg: ${nodes.length} events within 150mi of DFW`);
 
-    // Secondary filter — keep only North Texas bounding box
     const isNTX = (lat, lng) =>
       lat >= 31.5 && lat <= 34.5 && lng >= -98.5 && lng <= -96.0;
 
@@ -83,7 +91,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
 
   } catch(err) {
-    console.error('BikeReg error:', err.message);
     return res.status(200).json({
       events: [], count: 0,
       debug: { error: err.message },
