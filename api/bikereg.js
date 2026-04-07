@@ -1,49 +1,54 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
+  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
 
   try {
-    // Use BikeReg's GraphQL API (newer, more reliable than REST)
-    const query = `
-      query {
-        searchEvents(
-          appType: BIKEREG
-          state: "TX"
-          withinDays: 365
-          limit: 200
-        ) {
-          id
-          eventId
-          name
-          city
-          state
-          startDate
-          latitude
-          longitude
-          distanceString
-          url
-        }
-      }
-    `;
-
-    const response = await fetch('https://outsideapi.com/fed-gw/graphql', {
-      method: 'POST',
+    // Try the simplest possible call first — no filters except state
+    const url = 'https://www.bikereg.com/api/search?state=TX&format=json';
+    
+    const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0',
-      },
-      body: JSON.stringify({ query })
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      }
     });
 
-    // If GraphQL fails, fall back to REST with no state filter + NTX city matching
-    if (!response.ok) throw new Error('GraphQL failed');
+    const text = await response.text();
+    console.log('BikeReg status:', response.status);
+    console.log('BikeReg raw response (first 500 chars):', text.substring(0, 500));
 
-    const json = await response.json();
-    const rawEvents = json?.data?.searchEvents || [];
+    if (!response.ok) {
+      return res.status(200).json({ 
+        events: [], 
+        count: 0, 
+        debug: { status: response.status, body: text.substring(0, 500) },
+        fetchedAt: new Date().toISOString() 
+      });
+    }
 
-    console.log(`BikeReg GraphQL returned ${rawEvents.length} TX events`);
+    const data = JSON.parse(text);
+    const raw = data.data || data.events || data || [];
+    
+    console.log('BikeReg total events returned:', Array.isArray(raw) ? raw.length : typeof raw);
 
-    const NTX = [
-      'dallas','fort worth','frisco','plano','mckinney','allen','garland',
-      'irving','arlington','ri
+    return res.status(200).json({ 
+      events: [], 
+      count: 0,
+      debug: { 
+        totalReturned: Array.isArray(raw) ? raw.length : 0,
+        sampleEvent: Array.isArray(raw) && raw.length > 0 ? raw[0] : null,
+        keys: data ? Object.keys(data) : []
+      },
+      fetchedAt: new Date().toISOString() 
+    });
+
+  } catch(err) {
+    console.error('BikeReg error:', err.message);
+    return res.status(200).json({ 
+      events: [], 
+      count: 0, 
+      debug: { error: err.message },
+      fetchedAt: new Date().toISOString() 
+    });
+  }
+}
