@@ -3,81 +3,47 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
 
   try {
-    const types = [
-      { param: 'road',         type: 'road'   },
-      { param: 'cyclocross',   type: 'cx'     },
-      { param: 'mountainbike', type: 'mtb'    },
-      { param: 'gravel',       type: 'gravel' },
-    ];
+    // Use BikeReg's GraphQL API (newer, more reliable than REST)
+    const query = `
+      query {
+        searchEvents(
+          appType: BIKEREG
+          state: "TX"
+          withinDays: 365
+          limit: 200
+        ) {
+          id
+          eventId
+          name
+          city
+          state
+          startDate
+          latitude
+          longitude
+          distanceString
+          url
+        }
+      }
+    `;
 
-    // Try region=Texas instead of state=TX
-    const results = await Promise.all(
-      types.map(({ param }) =>
-        fetch(
-          `https://www.bikereg.com/api/search?region=Texas&withindays=365&format=json&eventtype=${param}`,
-          { headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' } }
-        )
-        .then(r => r.ok ? r.json() : { data: [] })
-        .catch(() => ({ data: [] }))
-      )
-    );
+    const response = await fetch('https://outsideapi.com/fed-gw/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+      },
+      body: JSON.stringify({ query })
+    });
+
+    // If GraphQL fails, fall back to REST with no state filter + NTX city matching
+    if (!response.ok) throw new Error('GraphQL failed');
+
+    const json = await response.json();
+    const rawEvents = json?.data?.searchEvents || [];
+
+    console.log(`BikeReg GraphQL returned ${rawEvents.length} TX events`);
 
     const NTX = [
       'dallas','fort worth','frisco','plano','mckinney','allen','garland',
-      'irving','arlington','richardson','lewisville','denton','waxahachie',
-      'weatherford','rockwall','rowlett','wylie','sherman','denison',
-      'gainesville','decatur','mineral wells','granbury','corsicana',
-      'celina','prosper','grapevine','southlake','flower mound','coppell',
-      'cedar hill','mansfield','glen rose','cleburne','midlothian','ennis',
-      'hillsboro','kaufman','terrell','forney','gunter','melissa','anna',
-      'princeton','fate','royse city','heath','sunnyvale','sachse',
-    ];
-
-    const isNTX = (city = '') => !city || NTX.some(k => city.toLowerCase().includes(k));
-
-    const seen = new Set();
-    const events = [];
-
-    results.forEach((result, i) => {
-      const discipline = types[i].type;
-      console.log(`BikeReg ${types[i].param}: ${(result.data||[]).length} total TX events`);
-
-      (result.data || [])
-        .filter(e => isNTX(e.city))
-        .forEach(e => {
-          if (seen.has(e.event_id)) return;
-          seen.add(e.event_id);
-
-          const dists = [];
-          if (e.categories) {
-            const s = new Set();
-            e.categories.forEach(c => {
-              if (c.distance_in_meters) {
-                const m = Math.round(c.distance_in_meters / 1609);
-                const l = m + 'mi';
-                if (m > 0 && !s.has(l)) { s.add(l); dists.push(l); }
-              }
-            });
-          }
-
-          events.push({
-            id: 'br-' + e.event_id,
-            name: e.event_name || 'Untitled',
-            date: e.event_date_utc || e.event_date || '',
-            location: [e.city, e.state].filter(Boolean).join(', ') || 'Texas',
-            lat: parseFloat(e.lat) || null,
-            lng: parseFloat(e.lng) || null,
-            type: discipline,
-            distances: dists.slice(0, 6),
-            registrationUrl: e.registration_url || `https://www.bikereg.com/${e.event_id}`,
-            source: 'BikeReg'
-          });
-        });
-    });
-
-    return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
-
-  } catch(err) {
-    return res.status(502).json({ error: 'BikeReg fetch failed', detail: err.message });
-  }
-}
+      'irving','arlington','ri
