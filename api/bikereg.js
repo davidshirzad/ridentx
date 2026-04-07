@@ -3,26 +3,30 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
 
   try {
-    // Make 4 separate calls — one per cycling discipline
-    const types = ['road', 'cyclocross', 'mountainbike', 'gravel'];
+    // BikeReg API accepts these exact eventtype strings
+    const types = [
+      { param: 'road',        type: 'road'   },
+      { param: 'cyclocross',  type: 'cx'     },
+      { param: 'mountainbike',type: 'mtb'    },
+      { param: 'gravel',      type: 'gravel' },
+    ];
 
     const results = await Promise.all(
-      types.map(type =>
+      types.map(({ param }) =>
         fetch(
-          `https://www.bikereg.com/api/search?state=TX&withindays=365&format=json&eventtype=${type}`,
-          { headers: { 'Accept': 'application/json' } }
-        ).then(r => r.ok ? r.json() : { data: [] })
-         .catch(() => ({ data: [] }))
+          `https://www.bikereg.com/api/search?state=TX&withindays=365&format=json&eventtype=${param}`,
+          { headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' } }
+        )
+        .then(r => r.ok ? r.json() : { data: [] })
+        .catch(() => ({ data: [] }))
       )
     );
-
-    const typeMap = { road: 'road', cyclocross: 'cx', mountainbike: 'mtb', gravel: 'gravel' };
 
     const seen = new Set();
     const events = [];
 
     results.forEach((result, i) => {
-      const discipline = typeMap[types[i]];
+      const discipline = types[i].type;
       (result.data || []).forEach(e => {
         if (seen.has(e.event_id)) return;
         seen.add(e.event_id);
@@ -53,6 +57,9 @@ export default async function handler(req, res) {
         });
       });
     });
+
+    // Log what we got for debugging
+    console.log('BikeReg results per type:', results.map((r, i) => `${types[i].param}: ${(r.data||[]).length}`));
 
     return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
 
