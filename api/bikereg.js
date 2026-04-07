@@ -16,7 +16,7 @@ export default async function handler(req, res) {
           maxDate: "${endDate}"
           userDistanceFilter: { latitude: 32.8968, longitude: -97.0403, distance: 150 }
         }
-        first: 200
+        first: 100
       ) {
         nodes {
           eventId
