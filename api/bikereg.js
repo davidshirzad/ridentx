@@ -1,37 +1,19 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
+  res.setHeader('Cache-Control', 's-maxage=60');
 
   try {
-    const today = new Date().toISOString();
-    const nextYear = new Date();
-    nextYear.setFullYear(nextYear.getFullYear() + 1);
-    const endDate = nextYear.toISOString();
-
     const query = `{
-      athleticEventCalendar(
-        searchParameters: {
-          appType: BIKEREG
-          startDate: "${today}"
-          endDate: "${endDate}"
-          location: { latitude: 32.8968, longitude: -97.0403, distance: 150 }
-        }
-        first: 200
-      ) {
-        nodes {
-          eventId
-          startDate
+      searchParams: __type(name: "SearchEventQueryParamsInput") {
+        inputFields {
           name
-          city
-          state
-          latitude
-          longitude
-          distanceString
-          vanityUrl
-          athleticEvent {
-            eventTypes
-            staticUrl
-          }
+          type { name kind ofType { name kind } }
+        }
+      }
+      iathleticEvent: __type(name: "IAthleticEventDisplay") {
+        fields {
+          name
+          type { name kind ofType { name kind } }
         }
       }
     }`;
@@ -48,53 +30,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({ query })
     });
 
-    const text = await response.text();
-    const json = JSON.parse(text);
-
-    if (json.errors) {
-      return res.status(200).json({
-        events: [], count: 0,
-        debug: { errors: json.errors },
-        fetchedAt: new Date().toISOString()
-      });
-    }
-
-    const nodes = json?.data?.athleticEventCalendar?.nodes || [];
-    console.log(`BikeReg: ${nodes.length} events within 150mi of DFW`);
-
-    const isNTX = (lat, lng) =>
-      lat >= 31.5 && lat <= 34.5 && lng >= -98.5 && lng <= -96.0;
-
-    const inferType = (eventTypes = []) => {
-      const t = (eventTypes || []).join(' ').toLowerCase();
-      if (t.includes('cyclocross') || t.includes('cx')) return 'cx';
-      if (t.includes('gravel')) return 'gravel';
-      if (t.includes('mountain') || t.includes('mtb')) return 'mtb';
-      return 'road';
-    };
-
-    const events = nodes
-      .filter(e => e.latitude && e.longitude && isNTX(e.latitude, e.longitude))
-      .map(e => ({
-        id: 'br-' + e.eventId,
-        name: e.name || 'Untitled',
-        date: e.startDate ? e.startDate.split('T')[0] : '',
-        location: [e.city, e.state].filter(Boolean).join(', ') || 'North Texas',
-        lat: e.latitude,
-        lng: e.longitude,
-        type: inferType(e.athleticEvent?.eventTypes),
-        distances: e.distanceString ? [e.distanceString] : [],
-        registrationUrl: e.athleticEvent?.staticUrl || `https://www.bikereg.com/${e.vanityUrl || e.eventId}`,
-        source: 'BikeReg'
-      }));
-
-    return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
+    const json = await response.json();
+    return res.status(200).json(json);
 
   } catch(err) {
-    return res.status(200).json({
-      events: [], count: 0,
-      debug: { error: err.message },
-      fetchedAt: new Date().toISOString()
-    });
+    return res.status(200).json({ error: err.message });
   }
 }
