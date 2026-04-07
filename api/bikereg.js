@@ -1,54 +1,79 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
 
   try {
-    // Try the simplest possible call first — no filters except state
-    const url = 'https://www.bikereg.com/api/search?state=TX&format=json';
-    
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      }
+    const types = [
+      { param: 'road',         type: 'road'   },
+      { param: 'cyclocross',   type: 'cx'     },
+      { param: 'mountainbike', type: 'mtb'    },
+      { param: 'gravel',       type: 'gravel' },
+    ];
+
+    const results = await Promise.all(
+      types.map(({ param }) =>
+        fetch(
+          `https://www.bikereg.com/api/search?state=TX&format=json&eventtype=${param}`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            }
+          }
+        )
+        .then(r => r.ok ? r.json() : { MatchingEvents: [] })
+        .catch(() => ({ MatchingEvents: [] }))
+      )
+    );
+
+    const NTX = [
+      'dallas','fort worth','frisco','plano','mckinney','allen','garland',
+      'irving','arlington','richardson','lewisville','denton','waxahachie',
+      'weatherford','rockwall','rowlett','wylie','sherman','denison',
+      'gainesville','decatur','mineral wells','granbury','corsicana',
+      'celina','prosper','grapevine','southlake','flower mound','coppell',
+      'cedar hill','mansfield','glen rose','cleburne','midlothian','ennis',
+      'kaufman','terrell','forney','gunter','melissa','anna','fate',
+      'royse city','heath','sunnyvale','sachse','duncanville','desoto',
+      'grand prairie','mesquite','carrollton','bedford','hurst','euless',
+      'keller','colleyville','argyle','justin','roanoke',
+    ];
+
+    const isNTX = (city = '') => !city || NTX.some(k => city.toLowerCase().includes(k));
+
+    const seen = new Set();
+    const events = [];
+
+    results.forEach((result, i) => {
+      const discipline = types[i].type;
+      const raw = result.MatchingEvents || [];
+      console.log(`BikeReg ${types[i].param}: ${raw.length} statewide, filtering to NTX`);
+
+      raw
+        .filter(e => isNTX(e.City))
+        .forEach(e => {
+          if (seen.has(e.EventId)) return;
+          seen.add(e.EventId);
+
+          events.push({
+            id: 'br-' + e.EventId,
+            name: e.EventName || 'Untitled',
+            date: e.EventDateUTC || e.EventDate || '',
+            location: [e.City, e.State].filter(Boolean).join(', ') || 'Texas',
+            lat: parseFloat(e.Latitude) || null,
+            lng: parseFloat(e.Longitude) || null,
+            type: discipline,
+            distances: e.DistanceString ? [e.DistanceString] : [],
+            registrationUrl: e.RegistrationUrl || `https://www.bikereg.com/${e.EventId}`,
+            source: 'BikeReg'
+          });
+        });
     });
 
-    const text = await response.text();
-    console.log('BikeReg status:', response.status);
-    console.log('BikeReg raw response (first 500 chars):', text.substring(0, 500));
-
-    if (!response.ok) {
-      return res.status(200).json({ 
-        events: [], 
-        count: 0, 
-        debug: { status: response.status, body: text.substring(0, 500) },
-        fetchedAt: new Date().toISOString() 
-      });
-    }
-
-    const data = JSON.parse(text);
-    const raw = data.data || data.events || data || [];
-    
-    console.log('BikeReg total events returned:', Array.isArray(raw) ? raw.length : typeof raw);
-
-    return res.status(200).json({ 
-      events: [], 
-      count: 0,
-      debug: { 
-        totalReturned: Array.isArray(raw) ? raw.length : 0,
-        sampleEvent: Array.isArray(raw) && raw.length > 0 ? raw[0] : null,
-        keys: data ? Object.keys(data) : []
-      },
-      fetchedAt: new Date().toISOString() 
-    });
+    return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
 
   } catch(err) {
     console.error('BikeReg error:', err.message);
-    return res.status(200).json({ 
-      events: [], 
-      count: 0, 
-      debug: { error: err.message },
-      fetchedAt: new Date().toISOString() 
-    });
+    return res.status(502).json({ error: 'BikeReg fetch failed', detail: err.message });
   }
 }
