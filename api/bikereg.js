@@ -3,97 +3,101 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
 
   try {
-    const types = [
-      { param: 'road',         type: 'road'   },
-      { param: 'cyclocross',   type: 'cx'     },
-      { param: 'mountainbike', type: 'mtb'    },
-      { param: 'gravel',       type: 'gravel' },
-    ];
-
-    // Search from multiple DFW zip codes at 100 mile radius
-    // to ensure full North Texas coverage
-    const zips = ['75201', '76102', '76051']; // Dallas, Fort Worth, Grapevine
-
-    const parseDate = (dateStr) => {
-      if (!dateStr) return null;
-      const match = dateStr.match(/\/Date\((\d+)/);
-      if (match) return new Date(parseInt(match[1])).toISOString().split('T')[0];
-      return dateStr;
-    };
-
-    // North Texas bounding box as secondary filter
-    const isNorthTexas = (lat, lng) => {
-      if (!lat || !lng) return false;
-      return lat >= 31.5 && lat <= 34.5 && lng >= -98.5 && lng <= -96.0;
-    };
-
-    // Fetch all type + zip combinations
-    const fetches = [];
-    for (const { param } of types) {
-      for (const zip of zips) {
-        fetches.push(
-          fetch(
-            `https://www.bikereg.com/api/search?format=json&eventtype=${param}&zip=${zip}&within=100&withindays=365`,
-            {
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-              }
-            }
-          )
-          .then(r => r.ok ? r.json() : { MatchingEvents: [] })
-          .catch(() => ({ MatchingEvents: [] }))
-          .then(data => ({ param, data }))
-        );
+    // Use BikeReg's GraphQL API with lat/lng radius — same as their website uses
+    // DFW center: 32.8968, -97.0403 — 150 mile radius covers all of North Texas
+    const query = `{
+      searchEvents(
+        appType: BIKEREG
+        location: { latitude: 32.8968, longitude: -97.0403 }
+        radiusMiles: 150
+        startDate: "${new Date().toISOString().split('T')[0]}"
+        limit: 200
+      ) {
+        eventId
+        name
+        city
+        state
+        date
+        latitude
+        longitude
+        distanceString
+        staticUrl
+        eventTypes
       }
-    }
+    }`;
 
-    const results = await Promise.all(fetches);
-
-    const typeMap = {
-      road: 'road', cyclocross: 'cx', mountainbike: 'mtb', gravel: 'gravel'
-    };
-
-    const seen = new Set();
-    const events = [];
-
-    results.forEach(({ param, data }) => {
-      const discipline = typeMap[param];
-      const raw = data.MatchingEvents || [];
-
-      raw
-        .filter(e => {
-          const lat = parseFloat(e.Latitude);
-          const lng = parseFloat(e.Longitude);
-          return isNorthTexas(lat, lng);
-        })
-        .forEach(e => {
-          if (seen.has(e.EventId)) return;
-          seen.add(e.EventId);
-
-          events.push({
-            id: 'br-' + e.EventId,
-            name: e.EventName || 'Untitled',
-            date: parseDate(e.EventDateUTC || e.EventDate),
-            location: [e.City, e.State].filter(Boolean).join(', ') || 'North Texas',
-            lat: parseFloat(e.Latitude) || null,
-            lng: parseFloat(e.Longitude) || null,
-            type: discipline,
-            distances: e.DistanceString ? [e.DistanceString] : [],
-            registrationUrl: e.RegistrationUrl || `https://www.bikereg.com/${e.EventId}`,
-            source: 'BikeReg'
-          });
-        });
+    const response = await fetch('https://outsideapi.com/fed-gw/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Origin': 'https://www.bikereg.com',
+        'Referer': 'https://www.bikereg.com/'
+      },
+      body: JSON.stringify({ query })
     });
 
-    console.log(`BikeReg final: ${events.length} North Texas events`);
+    const text = await response.text();
+    console.log('GraphQL status:', response.status);
+    console.log('GraphQL response (first 300):', text.substring(0, 300));
 
-    events.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    if (!response.ok) {
+      return res.status(200).json({
+        events: [], count: 0,
+        debug: { status: response.status, body: text.substring(0, 300) },
+        fetchedAt: new Date().toISOString()
+      });
+    }
+
+    const json = JSON.parse(text);
+
+    if (json.errors) {
+      return res.status(200).json({
+        events: [], count: 0,
+        debug: { errors: json.errors },
+        fetchedAt: new Date().toISOString()
+      });
+    }
+
+    const raw = json?.data?.searchEvents || [];
+    console.log(`GraphQL returned ${raw.length} events`);
+
+    // North Texas bounding box as secondary filter
+    const isNTX = (lat, lng) =>
+      lat >= 31.5 && lat <= 34.5 && lng >= -98.5 && lng <= -96.0;
+
+    const inferType = (eventTypes = []) => {
+      const t = (eventTypes || []).join(' ').toLowerCase();
+      if (t.includes('cyclocross') || t.includes('cx')) return 'cx';
+      if (t.includes('gravel')) return 'gravel';
+      if (t.includes('mountain') || t.includes('mtb')) return 'mtb';
+      return 'road';
+    };
+
+    const events = raw
+      .filter(e => e.latitude && e.longitude && isNTX(e.latitude, e.longitude))
+      .map(e => ({
+        id: 'br-' + e.eventId,
+        name: e.name || 'Untitled',
+        date: e.date ? e.date.split('T')[0] : '',
+        location: [e.city, e.state].filter(Boolean).join(', ') || 'North Texas',
+        lat: e.latitude,
+        lng: e.longitude,
+        type: inferType(e.eventTypes),
+        distances: e.distanceString ? [e.distanceString] : [],
+        registrationUrl: e.staticUrl || `https://www.bikereg.com/${e.eventId}`,
+        source: 'BikeReg'
+      }));
 
     return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
 
   } catch(err) {
     console.error('BikeReg error:', err.message);
-    return res.status(502).json({ error: 'BikeReg fetch failed', detail: err.message });
+    return res.status(200).json({
+      events: [], count: 0,
+      debug: { error: err.message },
+      fetchedAt: new Date().toISOString()
+    });
   }
 }
