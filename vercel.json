@@ -1,16 +1,12 @@
 {
   "version": 2,
+  "functions": {
+    "bikereg.js": { "runtime": "edge" },
+    "bikesignup.js": { "runtime": "edge" }
+  },
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Cache-Control", "value": "s-maxage=3600, stale-while-revalidate=7200" }
-      ]
-    }
+    { "src": "/api/bikereg", "dest": "/bikereg.js" },
+    { "src": "/api/bikesignup", "dest": "/bikesignup.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
