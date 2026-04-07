@@ -1,12 +1,8 @@
 {
   "version": 2,
-  "functions": {
-    "bikereg.js": { "runtime": "edge" },
-    "bikesignup.js": { "runtime": "edge" }
-  },
   "routes": [
-    { "src": "/api/bikereg", "dest": "/bikereg.js" },
-    { "src": "/api/bikesignup", "dest": "/bikesignup.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/api/bikereg", "dest": "/api/bikereg.js" },
+    { "src": "/api/bikesignup", "dest": "/api/bikesignup.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
