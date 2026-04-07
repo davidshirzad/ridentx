@@ -17,6 +17,29 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
+    // MUST contain at least one of these to be considered a cycling event
+    const CYCLING_REQUIRED = [
+      'bike', 'bicycl', 'cycl', 'cycle', 'riding', 'ride',
+      'gravel', 'mtb', 'mountain bike', 'criterium', 'crit',
+      'gran fondo', 'century', 'velodrome', 'peloton',
+      'road race', 'cyclocross', ' cx '
+    ];
+
+    // Reject if name contains any of these regardless of other keywords
+    const HARD_REJECT = [
+      '5k', '10k', 'half marathon', 'marathon', 'fun run', 'color run',
+      'virtual run', 'trail run', 'wod', 'crossfit', 'obstacle', 'mud run',
+      'spartan', 'tough mudder', 'swim meet', 'triathlon', 'duathlon',
+      'aquathlon', 'paddle', 'kayak', 'canoe', 'yoga', 'walk for',
+      'walk to', 'charity walk', '1 mile', 'fitness center'
+    ];
+
+    const isCycling = (name = '') => {
+      const t = name.toLowerCase();
+      if (HARD_REJECT.some(kw => t.includes(kw))) return false;
+      return CYCLING_REQUIRED.some(kw => t.includes(kw));
+    };
+
     const inferType = (name = '') => {
       const t = name.toLowerCase();
       if (t.includes('cyclocross') || t.includes(' cx ') || t.includes('cross')) return 'cx';
@@ -25,29 +48,11 @@ export default async function handler(req, res) {
       return 'road';
     };
 
-    // Keywords that indicate this is NOT a cycling event
-    const NON_CYCLING = [
-      'run', 'running', '5k', '10k', 'half marathon', 'marathon', 'triathlon',
-      'swim', 'walk', 'hike', 'paddle', 'kayak', 'obstacle', 'mud', 'spartan',
-      'color run', 'fun run', 'virtual run', 'trail run', 'cross country'
-    ];
-
-    const isCycling = (name = '', desc = '') => {
-      const text = (name + ' ' + desc).toLowerCase();
-      // Reject if it contains non-cycling keywords
-      if (NON_CYCLING.some(kw => text.includes(kw))) return false;
-      // Accept if it contains cycling keywords
-      const CYCLING = ['bike', 'bicycl', 'cycl', 'ride', 'road race', 'criterium',
-                       'crit', 'gravel', 'mtb', 'mountain bike', 'gran fondo',
-                       'century', 'velodrome', 'cross', 'peloton'];
-      return CYCLING.some(kw => text.includes(kw));
-    };
-
     const races = data.races || [];
     const events = races
       .map(r => r.race)
       .filter(Boolean)
-      .filter(r => isCycling(r.name, r.description))
+      .filter(r => isCycling(r.name))
       .map(r => {
         const addr = r.address || {};
         const dists = [];
