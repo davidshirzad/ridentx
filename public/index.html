@@ -585,36 +585,31 @@ function demo(){
 async function fetchLive(){
   try{
     const [br,bs]=await Promise.allSettled([
-      fetch('/api/bikereg').then(r=>r.ok?r.json():null),
-      fetch('/api/bikesignup').then(r=>r.ok?r.json():null)
+      fetch('https://www.bikereg.com/api/search?state=TX&withindays=365&format=json').then(r=>r.ok?r.json():null),
+      fetch('https://www.bikesignup.com/rest/races?format=json&state=TX',{headers:{'Accept':'application/json'}}).then(r=>r.ok?r.json():null)
     ]);
+    const ntxKw=['dallas','fort worth','frisco','plano','mckinney','allen','garland','irving','arlington','grand prairie','mesquite','carrollton','richardson','lewisville','denton','waxahachie','weatherford','cleburne','rockwall','rowlett','wylie','sherman','denison','gainesville','decatur','mineral wells','granbury','corsicana','prosper','grapevine','southlake','flower mound','coppell','cedar hill','mansfield','celina','glen rose','ntx','metroplex','north texas'];
+    const isNTX=loc=>!loc||ntxKw.some(k=>loc.toLowerCase().includes(k));
+    const inferType=(s='')=>{const t=s.toLowerCase();if(t.includes('cyclocross')||t.includes(' cx'))return'cx';if(t.includes('gravel'))return'gravel';if(t.includes('mountain')||t.includes(' mtb')||t.includes('trail'))return'mtb';return'road';};
     let evts=[];
-    if(br.status==='fulfilled'&&br.value?.events){
-      evts.push(...br.value.events.map(e=>({
-        id:e.id,name:e.name,date:e.date,
-        loc:e.location,lat:e.lat,lng:e.lng,
-        type:e.type,dists:e.distances,
-        url:e.registrationUrl,src:e.source
-      })));
+    if(br.status==='fulfilled'&&br.value?.data){
+      evts.push(...br.value.data.map(e=>{
+        const loc=[e.city,e.state].filter(Boolean).join(', ');
+        const dists=[];if(e.categories){const s=new Set();e.categories.forEach(c=>{if(c.distance_in_meters){const m=Math.round(c.distance_in_meters/1609);if(m>0&&!s.has(m+'mi')){s.add(m+'mi');dists.push(m+'mi');}}});}
+        return{id:'br-'+e.event_id,name:e.event_name||'Untitled',date:e.event_date_utc||e.event_date||'',loc,lat:parseFloat(e.lat||0)||null,lng:parseFloat(e.lng||0)||null,type:inferType(e.event_name+' '+(e.event_type||'')),dists:dists.slice(0,5),url:`https://www.bikereg.com/${e.event_id}`,src:'BikeReg'};
+      }).filter(e=>isNTX(e.loc)));
     }
-    if(bs.status==='fulfilled'&&bs.value?.events){
-      evts.push(...bs.value.events.map(e=>({
-        id:e.id,name:e.name,date:e.date,
-        loc:e.location,lat:e.lat,lng:e.lng,
-        type:e.type,dists:e.distances,
-        url:e.registrationUrl,src:e.source
-      })));
+    if(bs.status==='fulfilled'&&bs.value?.races){
+      evts.push(...bs.value.races.map(r=>{
+        const race=r.race;if(!race)return null;
+        const addr=race.address||{};const loc=[addr.city,addr.state].filter(Boolean).join(', ');
+        const dists=[];if(race.events){const s=new Set();race.events.forEach(ev=>{if(ev.distance){const l=ev.distance+(ev.distance_unit==='M'?'mi':ev.distance_unit==='K'?'km':'');if(!s.has(l)){s.add(l);dists.push(l);}}});}
+        return{id:'bs-'+race.race_id,name:race.name||'Untitled',date:race.next_date||'',loc,lat:parseFloat(addr.lat||0)||null,lng:parseFloat(addr.lng||0)||null,type:inferType(race.name),dists:dists.slice(0,5),url:race.url||`https://www.bikesignup.com/Race/${race.race_id}`,src:'BikeSignUp'};
+      }).filter(Boolean).filter(e=>isNTX(e.loc)));
     }
-    const now=new Date(),end=new Date();
-    end.setFullYear(end.getFullYear()+1);
+    const now=new Date(),end=new Date();end.setFullYear(end.getFullYear()+1);
     const seen=new Set();
-    evts=evts.filter(e=>{
-      const d=pd(e.date);
-      if(!d||d<now||d>end)return false;
-      const k=e.name.toLowerCase().trim()+e.date.substring(0,10);
-      if(seen.has(k))return false;
-      seen.add(k);return true;
-    });
+    evts=evts.filter(e=>{const d=pd(e.date);if(!d||d<now||d>end)return false;const k=e.name.toLowerCase().trim()+e.date.substring(0,10);if(seen.has(k))return false;seen.add(k);return true;});
     evts.sort((a,b)=>{const da=pd(a.date),db=pd(b.date);return da&&db?da-db:0;});
     return evts.length?evts:null;
   }catch{return null;}
@@ -737,13 +732,68 @@ function switchTab(id,btn){
   document.getElementById('panel-'+id).classList.add('active');
 }
 
+// ── CURATED EVENTS ──────────────────────────────────────────
+// Manually maintained list of quality local events not on BikeReg/BikeSignUp.
+// To add a new event, copy one of the objects below and update the fields.
+// Dates must be in YYYY-MM-DD format.
+function curatedEvents(){
+  const TVCRIT = {
+    name: 'Turbo Velo Pickle Juice Tuesday Night Crits',
+    loc: 'Richardson, TX',
+    lat: 32.9717, lng: -96.7310,
+    type: 'road',
+    dists: ['C Race','B Race','A Race','Masters 40+'],
+    url: 'https://linktr.ee/TurboVeloCrits',
+    src: 'Curated'
+  };
+
+  // All 24 Tuesday dates across 6 mini-series, March 24 – September 1 2026
+  const critDates = [
+    // Mini-Series 1: March 24 – April 14
+    '2026-03-24','2026-03-31','2026-04-07','2026-04-14',
+    // Mini-Series 2: April 21 – May 12
+    '2026-04-21','2026-04-28','2026-05-05','2026-05-12',
+    // Mini-Series 3: May 19 – June 9
+    '2026-05-19','2026-05-26','2026-06-02','2026-06-09',
+    // Mini-Series 4: June 16 – July 7
+    '2026-06-16','2026-06-23','2026-06-30','2026-07-07',
+    // Mini-Series 5: July 14 – August 4
+    '2026-07-14','2026-07-21','2026-07-28','2026-08-04',
+    // Mini-Series 6: August 11 – September 1
+    '2026-08-11','2026-08-18','2026-08-25','2026-09-01',
+  ];
+
+  return critDates.map((date, i) => ({
+    id: `curated-tvcrit-${i}`,
+    ...TVCRIT,
+    date,
+  }));
+}
+
 // INIT
 async function init(){
   initMap();
-  const live=await fetchLive();
-  allEvents=live||demo();
-  document.getElementById('totalCount').textContent=allEvents.length;
-  if(!live)document.getElementById('statusTxt').innerHTML=`<span style="color:var(--text-muted);font-size:0.75rem">Showing sample data — add a backend proxy for live feeds</span>`;
+  const live = await fetchLive();
+  const base = live || demo();
+
+  // Merge curated events, deduplicate by name+date
+  const curated = curatedEvents();
+  const seen = new Set(base.map(e => e.name.toLowerCase().trim() + e.date.substring(0,10)));
+  const newCurated = curated.filter(e => {
+    const k = e.name.toLowerCase().trim() + e.date.substring(0,10);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+
+  // Filter curated to future events only
+  const now = new Date();
+  const filtered_curated = newCurated.filter(e => { const d=pd(e.date); return d && d >= now; });
+
+  allEvents = [...base, ...filtered_curated]
+    .sort((a,b) => { const da=pd(a.date),db=pd(b.date); return da&&db?da-db:0; });
+
+  document.getElementById('totalCount').textContent = allEvents.length;
+  if(!live) document.getElementById('statusTxt').innerHTML=`<span style="color:var(--text-muted);font-size:0.75rem">Showing sample data — add a backend proxy for live feeds</span>`;
   render();
 }
 
