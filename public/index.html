@@ -585,31 +585,36 @@ function demo(){
 async function fetchLive(){
   try{
     const [br,bs]=await Promise.allSettled([
-      fetch('https://www.bikereg.com/api/search?state=TX&withindays=365&format=json').then(r=>r.ok?r.json():null),
-      fetch('https://www.bikesignup.com/rest/races?format=json&state=TX',{headers:{'Accept':'application/json'}}).then(r=>r.ok?r.json():null)
+      fetch('/api/bikereg').then(r=>r.ok?r.json():null),
+      fetch('/api/bikesignup').then(r=>r.ok?r.json():null)
     ]);
-    const ntxKw=['dallas','fort worth','frisco','plano','mckinney','allen','garland','irving','arlington','grand prairie','mesquite','carrollton','richardson','lewisville','denton','waxahachie','weatherford','cleburne','rockwall','rowlett','wylie','sherman','denison','gainesville','decatur','mineral wells','granbury','corsicana','prosper','grapevine','southlake','flower mound','coppell','cedar hill','mansfield','celina','glen rose','ntx','metroplex','north texas'];
-    const isNTX=loc=>!loc||ntxKw.some(k=>loc.toLowerCase().includes(k));
-    const inferType=(s='')=>{const t=s.toLowerCase();if(t.includes('cyclocross')||t.includes(' cx'))return'cx';if(t.includes('gravel'))return'gravel';if(t.includes('mountain')||t.includes(' mtb')||t.includes('trail'))return'mtb';return'road';};
     let evts=[];
-    if(br.status==='fulfilled'&&br.value?.data){
-      evts.push(...br.value.data.map(e=>{
-        const loc=[e.city,e.state].filter(Boolean).join(', ');
-        const dists=[];if(e.categories){const s=new Set();e.categories.forEach(c=>{if(c.distance_in_meters){const m=Math.round(c.distance_in_meters/1609);if(m>0&&!s.has(m+'mi')){s.add(m+'mi');dists.push(m+'mi');}}});}
-        return{id:'br-'+e.event_id,name:e.event_name||'Untitled',date:e.event_date_utc||e.event_date||'',loc,lat:parseFloat(e.lat||0)||null,lng:parseFloat(e.lng||0)||null,type:inferType(e.event_name+' '+(e.event_type||'')),dists:dists.slice(0,5),url:`https://www.bikereg.com/${e.event_id}`,src:'BikeReg'};
-      }).filter(e=>isNTX(e.loc)));
+    if(br.status==='fulfilled'&&br.value?.events){
+      evts.push(...br.value.events.map(e=>({
+        id:e.id,name:e.name,date:e.date,
+        loc:e.location,lat:e.lat,lng:e.lng,
+        type:e.type,dists:e.distances,
+        url:e.registrationUrl,src:e.source
+      })));
     }
-    if(bs.status==='fulfilled'&&bs.value?.races){
-      evts.push(...bs.value.races.map(r=>{
-        const race=r.race;if(!race)return null;
-        const addr=race.address||{};const loc=[addr.city,addr.state].filter(Boolean).join(', ');
-        const dists=[];if(race.events){const s=new Set();race.events.forEach(ev=>{if(ev.distance){const l=ev.distance+(ev.distance_unit==='M'?'mi':ev.distance_unit==='K'?'km':'');if(!s.has(l)){s.add(l);dists.push(l);}}});}
-        return{id:'bs-'+race.race_id,name:race.name||'Untitled',date:race.next_date||'',loc,lat:parseFloat(addr.lat||0)||null,lng:parseFloat(addr.lng||0)||null,type:inferType(race.name),dists:dists.slice(0,5),url:race.url||`https://www.bikesignup.com/Race/${race.race_id}`,src:'BikeSignUp'};
-      }).filter(Boolean).filter(e=>isNTX(e.loc)));
+    if(bs.status==='fulfilled'&&bs.value?.events){
+      evts.push(...bs.value.events.map(e=>({
+        id:e.id,name:e.name,date:e.date,
+        loc:e.location,lat:e.lat,lng:e.lng,
+        type:e.type,dists:e.distances,
+        url:e.registrationUrl,src:e.source
+      })));
     }
-    const now=new Date(),end=new Date();end.setFullYear(end.getFullYear()+1);
+    const now=new Date(),end=new Date();
+    end.setFullYear(end.getFullYear()+1);
     const seen=new Set();
-    evts=evts.filter(e=>{const d=pd(e.date);if(!d||d<now||d>end)return false;const k=e.name.toLowerCase().trim()+e.date.substring(0,10);if(seen.has(k))return false;seen.add(k);return true;});
+    evts=evts.filter(e=>{
+      const d=pd(e.date);
+      if(!d||d<now||d>end)return false;
+      const k=e.name.toLowerCase().trim()+e.date.substring(0,10);
+      if(seen.has(k))return false;
+      seen.add(k);return true;
+    });
     evts.sort((a,b)=>{const da=pd(a.date),db=pd(b.date);return da&&db?da-db:0;});
     return evts.length?evts:null;
   }catch{return null;}
