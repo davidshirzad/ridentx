@@ -16,28 +16,19 @@ export default async function handler(req, res) {
     if (!response.ok) throw new Error(`BikeSignUp error ${response.status}`);
 
     const data = await response.json();
+    console.log(`BikeSignUp raw races: ${(data.races || []).length}`);
 
-    // MUST contain at least one of these to be considered a cycling event
-    const CYCLING_REQUIRED = [
-      'bike', 'bicycl', 'cycl', 'cycle', 'riding', 'ride',
-      'gravel', 'mtb', 'mountain bike', 'criterium', 'crit',
-      'gran fondo', 'century', 'velodrome', 'peloton',
-      'road race', 'cyclocross', ' cx '
+    // Hard reject — clearly not cycling
+    const REJECT = [
+      '5k','10k','half marathon','marathon','fun run','color run','virtual run',
+      'trail run','wod','crossfit','obstacle','mud run','spartan','tough mudder',
+      'swim meet','triathlon','duathlon','aquathlon','paddle','kayak','canoe',
+      'yoga','charity walk','fitness center','ruck','rucking','workout','weightlift'
     ];
 
-    // Reject if name contains any of these regardless of other keywords
-    const HARD_REJECT = [
-      '5k', '10k', 'half marathon', 'marathon', 'fun run', 'color run',
-      'virtual run', 'trail run', 'wod', 'crossfit', 'obstacle', 'mud run',
-      'spartan', 'tough mudder', 'swim meet', 'triathlon', 'duathlon',
-      'aquathlon', 'paddle', 'kayak', 'canoe', 'yoga', 'walk for',
-      'walk to', 'charity walk', '1 mile', 'fitness center'
-    ];
-
-    const isCycling = (name = '') => {
+    const isNotCycling = (name = '') => {
       const t = name.toLowerCase();
-      if (HARD_REJECT.some(kw => t.includes(kw))) return false;
-      return CYCLING_REQUIRED.some(kw => t.includes(kw));
+      return REJECT.some(kw => t.includes(kw));
     };
 
     const inferType = (name = '') => {
@@ -48,11 +39,31 @@ export default async function handler(req, res) {
       return 'road';
     };
 
+    const NTX = [
+      'dallas','fort worth','frisco','plano','mckinney','allen','garland',
+      'irving','arlington','richardson','lewisville','denton','waxahachie',
+      'weatherford','rockwall','rowlett','wylie','sherman','denison',
+      'gainesville','decatur','mineral wells','granbury','corsicana',
+      'celina','prosper','grapevine','southlake','flower mound','coppell',
+      'cedar hill','mansfield','glen rose','cleburne','midlothian','ennis',
+      'kaufman','terrell','forney','gunter','melissa','anna','fate',
+      'royse city','heath','sunnyvale','sachse','duncanville','desoto',
+      'grand prairie','mesquite','carrollton','bedford','hurst','euless',
+      'keller','colleyville','argyle','justin','roanoke','greenville',
+      'bonham','mckinney','wichita falls','muenster','gainesville',
+    ];
+
+    const isNTX = (city = '') => {
+      if (!city) return false;
+      return NTX.some(k => city.toLowerCase().includes(k));
+    };
+
     const races = data.races || [];
     const events = races
       .map(r => r.race)
       .filter(Boolean)
-      .filter(r => isCycling(r.name))
+      .filter(r => !isNotCycling(r.name))
+      .filter(r => isNTX(r.address?.city))
       .map(r => {
         const addr = r.address || {};
         const dists = [];
@@ -80,9 +91,12 @@ export default async function handler(req, res) {
         };
       });
 
+    console.log(`BikeSignUp after filtering: ${events.length} NTX cycling events`);
+
     return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
 
   } catch(err) {
+    console.error('BikeSignUp error:', err.message);
     return res.status(502).json({ error: 'BikeSignUp fetch failed', detail: err.message });
   }
 }
