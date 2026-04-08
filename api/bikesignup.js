@@ -8,100 +8,90 @@ export default async function handler(req, res) {
     endDate.setFullYear(endDate.getFullYear() + 1);
     const end = endDate.toISOString().split('T')[0];
 
-    // Only bike_race and bike_ride return results for TX — all other types return 0
-    const [bikeRace, bikeRide] = await Promise.all([
-      fetch(
-        `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&state=TX&event_type=bike_race`,
-        { headers: { 'Accept': 'application/json' } }
-      ).then(r => r.ok ? r.json() : { races: [] }).catch(() => ({ races: [] })),
-      fetch(
-        `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&state=TX&event_type=bike_ride`,
-        { headers: { 'Accept': 'application/json' } }
-      ).then(r => r.ok ? r.json() : { races: [] }).catch(() => ({ races: [] }))
-    ]);
+    // Correct event_type enum values + zipcode/radius for DFW (75201 = Dallas)
+    const eventTypes = [
+      { param: 'bike_race',          type: 'road'   },
+      { param: 'bike_ride',          type: 'road'   },
+      { param: 'mountain_bike_race', type: 'mtb'    },
+      { param: 'gravel_grinder',     type: 'gravel' },
+      { param: 'fundraising_ride',   type: 'road'   },
+    ];
 
-    const allRaces = [
-      ...(bikeRace.races || []),
-      ...(bikeRide.races || [])
-    ].map(r => r.race).filter(Boolean);
+    const results = await Promise.all(
+      eventTypes.map(({ param }) =>
+        fetch(
+          `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&event_type=${param}&zipcode=75201&radius=100`,
+          { headers: { 'Accept': 'application/json' } }
+        )
+        .then(r => r.ok ? r.json() : { races: [] })
+        .catch(() => ({ races: [] }))
+        .then(data => ({ param, races: data.races || [] }))
+      )
+    );
 
-    console.log(`BikeSignUp raw: ${allRaces.length} TX races`);
+    results.forEach(({ param, races }) => {
+      console.log(`BikeSignUp ${param}: ${races.length} races within 100mi of Dallas`);
+    });
 
     // Hard reject — clearly not cycling
     const REJECT = [
       'swim', 'triathlon', 'duathlon', 'aquathlon', 'open water',
       'wod', 'crossfit', 'obstacle', 'mud run', 'spartan', 'ruck',
-      'fun run', 'walk', '5k', '10k', 'marathon', 'run/walk'
+      'fun run', '5k', '10k', 'marathon', 'run/walk', 'running'
     ];
 
     const isNotCycling = (name = '') =>
       REJECT.some(kw => name.toLowerCase().includes(kw));
 
-    // North Texas cities
-    const NTX = [
-      'dallas','fort worth','frisco','plano','mckinney','allen','garland',
-      'irving','arlington','richardson','lewisville','denton','waxahachie',
-      'weatherford','rockwall','rowlett','wylie','sherman','denison',
-      'gainesville','decatur','mineral wells','granbury','corsicana',
-      'celina','prosper','grapevine','southlake','flower mound','coppell',
-      'cedar hill','mansfield','glen rose','cleburne','midlothian','ennis',
-      'kaufman','terrell','forney','gunter','melissa','anna','fate',
-      'royse city','heath','sunnyvale','sachse','duncanville','desoto',
-      'grand prairie','mesquite','carrollton','bedford','hurst','euless',
-      'keller','colleyville','argyle','justin','roanoke','greenville',
-      'bonham','wichita falls','muenster','burleson','crowley','azle',
-      'stephenville','highland village','addison','gatesville',
-    ];
-
-    const isNTX = (city = '') => {
-      if (!city) return false;
-      return NTX.some(k => city.toLowerCase().includes(k));
-    };
-
-    const inferType = (name = '') => {
+    const inferType = (name = '', defaultType = 'road') => {
       const t = name.toLowerCase();
       if (t.includes('cyclocross') || t.includes(' cx ')) return 'cx';
       if (t.includes('gravel')) return 'gravel';
-      if (t.includes('mountain') || t.includes(' mtb')) return 'mtb';
-      return 'road';
+      if (t.includes('mountain') || t.includes(' mtb') || t.includes('short track')) return 'mtb';
+      return defaultType;
     };
 
     const seen = new Set();
     const events = [];
 
-    allRaces
-      .filter(r => !isNotCycling(r.name))
-      .filter(r => isNTX(r.address?.city))
-      .forEach(r => {
-        if (seen.has(r.race_id)) return;
-        seen.add(r.race_id);
+    results.forEach(({ param, races }) => {
+      const defaultType = eventTypes.find(e => e.param === param)?.type || 'road';
 
-        const addr = r.address || {};
-        const dists = [];
-        if (r.events) {
-          const s = new Set();
-          r.events.forEach(ev => {
-            if (ev.distance) {
-              const unit = ev.distance_unit === 'M' ? 'mi' : ev.distance_unit === 'K' ? 'km' : '';
-              const l = `${ev.distance}${unit}`;
-              if (!s.has(l)) { s.add(l); dists.push(l); }
-            }
+      races
+        .map(r => r.race)
+        .filter(Boolean)
+        .filter(r => !isNotCycling(r.name))
+        .forEach(r => {
+          if (seen.has(r.race_id)) return;
+          seen.add(r.race_id);
+
+          const addr = r.address || {};
+          const dists = [];
+          if (r.events) {
+            const s = new Set();
+            r.events.forEach(ev => {
+              if (ev.distance) {
+                const unit = ev.distance_unit === 'M' ? 'mi' : ev.distance_unit === 'K' ? 'km' : '';
+                const l = `${ev.distance}${unit}`;
+                if (!s.has(l)) { s.add(l); dists.push(l); }
+              }
+            });
+          }
+
+          events.push({
+            id: 'bs-' + r.race_id,
+            name: r.name || 'Untitled',
+            date: r.next_date || '',
+            location: [addr.city, addr.state].filter(Boolean).join(', ') || 'Texas',
+            lat: parseFloat(addr.lat) || null,
+            lng: parseFloat(addr.lng) || null,
+            type: inferType(r.name, defaultType),
+            distances: dists.slice(0, 6),
+            registrationUrl: r.url || `https://www.bikesignup.com/Race/${r.race_id}`,
+            source: 'BikeSignUp'
           });
-        }
-
-        events.push({
-          id: 'bs-' + r.race_id,
-          name: r.name || 'Untitled',
-          date: r.next_date || '',
-          location: [addr.city, addr.state].filter(Boolean).join(', ') || 'Texas',
-          lat: parseFloat(addr.lat) || null,
-          lng: parseFloat(addr.lng) || null,
-          type: inferType(r.name),
-          distances: dists.slice(0, 6),
-          registrationUrl: r.url || `https://www.bikesignup.com/Race/${r.race_id}`,
-          source: 'BikeSignUp'
         });
-      });
+    });
 
     events.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     console.log(`BikeSignUp final: ${events.length} NTX cycling events`);
