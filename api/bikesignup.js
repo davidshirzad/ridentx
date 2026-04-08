@@ -8,13 +8,22 @@ export default async function handler(req, res) {
     endDate.setFullYear(endDate.getFullYear() + 1);
     const end = endDate.toISOString().split('T')[0];
 
-    // Make separate calls for each cycling event type
     const eventTypes = [
       { param: 'bike_race',     type: 'road'   },
       { param: 'bike_ride',     type: 'road'   },
       { param: 'mountain_bike', type: 'mtb'    },
       { param: 'gravel',        type: 'gravel' },
+      { param: 'cyclocross',    type: 'cx'     },
     ];
+
+    const REJECT = [
+      'swim','triathlon','duathlon','aquathlon','open water','wod',
+      'crossfit','obstacle','mud run','spartan','ruck','rucking',
+      'running','5k','10k','marathon','fun run','walk'
+    ];
+
+    const isNotCycling = (name = '') =>
+      REJECT.some(kw => name.toLowerCase().includes(kw));
 
     const NTX = [
       'dallas','fort worth','frisco','plano','mckinney','allen','garland',
@@ -28,7 +37,7 @@ export default async function handler(req, res) {
       'grand prairie','mesquite','carrollton','bedford','hurst','euless',
       'keller','colleyville','argyle','justin','roanoke','greenville',
       'bonham','wichita falls','muenster','burleson','crowley','azle',
-      'weatherford','stephenville','hillsboro','corsicana','ennis',
+      'stephenville','hillsboro','mineral wells',
     ];
 
     const isNTX = (city = '') => {
@@ -69,6 +78,7 @@ export default async function handler(req, res) {
       races
         .map(r => r.race)
         .filter(Boolean)
+        .filter(r => !isNotCycling(r.name))
         .filter(r => isNTX(r.address?.city))
         .forEach(r => {
           if (seen.has(r.race_id)) return;
