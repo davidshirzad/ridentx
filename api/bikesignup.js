@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
+  res.setHeader('Cache-Control', 's-maxage=60');
 
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -8,118 +8,30 @@ export default async function handler(req, res) {
     endDate.setFullYear(endDate.getFullYear() + 1);
     const end = endDate.toISOString().split('T')[0];
 
-    const eventTypes = [
-      { param: 'bike_race',     type: 'road'   },
-      { param: 'bike_ride',     type: 'road'   },
-      { param: 'mountain_bike', type: 'mtb'    },
-      { param: 'gravel',        type: 'gravel' },
-      { param: 'cyclocross',    type: 'cx'     },
-    ];
-
-    const REJECT = [
-      'swim','triathlon','duathlon','aquathlon','open water','wod',
-      'crossfit','obstacle','mud run','spartan','ruck','rucking',
-      'running','5k','10k','marathon','fun run','walk'
-    ];
-
-    const isNotCycling = (name = '') =>
-      REJECT.some(kw => name.toLowerCase().includes(kw));
-
-    const NTX = [
-      'dallas','fort worth','frisco','plano','mckinney','allen','garland',
-      'irving','arlington','richardson','lewisville','denton','waxahachie',
-      'weatherford','rockwall','rowlett','wylie','sherman','denison',
-      'gainesville','decatur','mineral wells','granbury','corsicana',
-      'celina','prosper','grapevine','southlake','flower mound','coppell',
-      'cedar hill','mansfield','glen rose','cleburne','midlothian','ennis',
-      'kaufman','terrell','forney','gunter','melissa','anna','fate',
-      'royse city','heath','sunnyvale','sachse','duncanville','desoto',
-      'grand prairie','mesquite','carrollton','bedford','hurst','euless',
-      'keller','colleyville','argyle','justin','roanoke','greenville',
-      'bonham','wichita falls','muenster','burleson','crowley','azle',
-      'stephenville','hillsboro','mineral wells',
-    ];
-
-    const isNTX = (city = '') => {
-      if (!city) return false;
-      return NTX.some(k => city.toLowerCase().includes(k));
-    };
-
-    const results = await Promise.all(
-      eventTypes.map(({ param }) =>
-        fetch(
-          `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&state=TX&event_type=${param}`,
-          { headers: { 'Accept': 'application/json' } }
-        )
-        .then(r => r.ok ? r.json() : { races: [] })
-        .catch(() => ({ races: [] }))
-        .then(data => ({ param, races: data.races || [] }))
-      )
+    // Just check mountain_bike type and show all TX cities returned
+    const response = await fetch(
+      `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&state=TX&event_type=mountain_bike`,
+      { headers: { 'Accept': 'application/json' } }
     );
 
-    results.forEach(({ param, races }) => {
-      console.log(`BikeSignUp ${param}: ${races.length} TX races`);
+    const data = await response.json();
+    const races = (data.races || []).map(r => r.race).filter(Boolean);
+
+    // Show all cities and names so we can see what's there
+    const debug = races.map(r => ({
+      id: r.race_id,
+      name: r.name,
+      city: r.address?.city,
+      state: r.address?.state
+    }));
+
+    return res.status(200).json({
+      total: races.length,
+      races: debug,
+      fetchedAt: new Date().toISOString()
     });
-
-    const inferType = (name = '', defaultType = 'road') => {
-      const t = name.toLowerCase();
-      if (t.includes('cyclocross') || t.includes(' cx ')) return 'cx';
-      if (t.includes('gravel')) return 'gravel';
-      if (t.includes('mountain') || t.includes(' mtb')) return 'mtb';
-      return defaultType;
-    };
-
-    const seen = new Set();
-    const events = [];
-
-    results.forEach(({ param, races }) => {
-      const defaultType = eventTypes.find(e => e.param === param)?.type || 'road';
-
-      races
-        .map(r => r.race)
-        .filter(Boolean)
-        .filter(r => !isNotCycling(r.name))
-        .filter(r => isNTX(r.address?.city))
-        .forEach(r => {
-          if (seen.has(r.race_id)) return;
-          seen.add(r.race_id);
-
-          const addr = r.address || {};
-          const dists = [];
-          if (r.events) {
-            const s = new Set();
-            r.events.forEach(ev => {
-              if (ev.distance) {
-                const unit = ev.distance_unit === 'M' ? 'mi' : ev.distance_unit === 'K' ? 'km' : '';
-                const l = `${ev.distance}${unit}`;
-                if (!s.has(l)) { s.add(l); dists.push(l); }
-              }
-            });
-          }
-
-          events.push({
-            id: 'bs-' + r.race_id,
-            name: r.name || 'Untitled',
-            date: r.next_date || '',
-            location: [addr.city, addr.state].filter(Boolean).join(', ') || 'Texas',
-            lat: parseFloat(addr.lat) || null,
-            lng: parseFloat(addr.lng) || null,
-            type: inferType(r.name, defaultType),
-            distances: dists.slice(0, 6),
-            registrationUrl: r.url || `https://www.bikesignup.com/Race/${r.race_id}`,
-            source: 'BikeSignUp'
-          });
-        });
-    });
-
-    events.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-
-    console.log(`BikeSignUp final: ${events.length} NTX cycling events`);
-
-    return res.status(200).json({ events, count: events.length, fetchedAt: new Date().toISOString() });
 
   } catch(err) {
-    console.error('BikeSignUp error:', err.message);
-    return res.status(502).json({ error: 'BikeSignUp fetch failed', detail: err.message });
+    return res.status(200).json({ error: err.message });
   }
 }
