@@ -8,28 +8,26 @@ export default async function handler(req, res) {
     endDate.setFullYear(endDate.getFullYear() + 1);
     const end = endDate.toISOString().split('T')[0];
 
-    // Just check mountain_bike type and show all TX cities returned
-    const response = await fetch(
-      `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&state=TX&event_type=mountain_bike`,
-      { headers: { 'Accept': 'application/json' } }
+    // Test every possible event type to see which ones return TX cycling results
+    const typesToTest = [
+      'bike_race','bike_ride','mountain_bike','gravel','cyclocross',
+      'cycling','off_road','trail','mtb','endurance','criterium',
+      'road_race','stage_race','gran_fondo','century'
+    ];
+
+    const results = await Promise.all(
+      typesToTest.map(type =>
+        fetch(
+          `https://www.bikesignup.com/rest/races?format=json&start_date=${today}&end_date=${end}&state=TX&event_type=${type}`,
+          { headers: { 'Accept': 'application/json' } }
+        )
+        .then(r => r.ok ? r.json() : { races: [] })
+        .catch(() => ({ races: [] }))
+        .then(data => ({ type, count: (data.races || []).length }))
+      )
     );
 
-    const data = await response.json();
-    const races = (data.races || []).map(r => r.race).filter(Boolean);
-
-    // Show all cities and names so we can see what's there
-    const debug = races.map(r => ({
-      id: r.race_id,
-      name: r.name,
-      city: r.address?.city,
-      state: r.address?.state
-    }));
-
-    return res.status(200).json({
-      total: races.length,
-      races: debug,
-      fetchedAt: new Date().toISOString()
-    });
+    return res.status(200).json({ results, fetchedAt: new Date().toISOString() });
 
   } catch(err) {
     return res.status(200).json({ error: err.message });
